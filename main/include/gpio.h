@@ -41,6 +41,9 @@
 #define PIN_ENC_A   GPIO_NUM_16		// CLK
 #define PIN_ENC_B   GPIO_NUM_17		// DT
 #define PIN_ENC_BTN GPIO_NUM_5		// SW
+//Max
+#define PIN_ENC_A2   GPIO_NUM_25		// CLK
+#define PIN_ENC_B2   GPIO_NUM_26		// DT
 
 // I2C lcd (and rda5807 if lcd is i2c or LCD_NONE)
 //------------------------------------------------
@@ -67,8 +70,12 @@
 
 // I2S DAC or PDM output
 //-----------------------
-#define PIN_I2S_LRCK GPIO_NUM_25	// or Channel1
-#define PIN_I2S_BCLK GPIO_NUM_26	// or channel2
+//Max
+//#define PIN_I2S_LRCK GPIO_NUM_25	// or Channel1
+//#define PIN_I2S_BCLK GPIO_NUM_26	// or channel2
+#define PIN_I2S_LRCK 0	// or Channel1
+#define PIN_I2S_BCLK 0	// or channel2
+
 #define PIN_I2S_DATA GPIO_NUM_22	//  
 
 

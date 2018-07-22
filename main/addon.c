@@ -9,7 +9,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/time.h>
-#include "ClickEncoder.h"
+//Max
+//#include "ClickEncoder.h"
+#include "ClickEncoder2.h"
+
 #include "app_main.h"
 #include "gpio.h"
 #include "webclient.h"
@@ -71,6 +74,9 @@ static bool itLcdOut = false;
 static bool state = false; // start stop on Ok key
 
 static int16_t newValue = 0;
+//Max
+static int16_t newValue2 = 0;
+
 static int16_t currentValue = 0;
 static bool dvolume = true; // display volume screen
  
@@ -424,6 +430,8 @@ static void toggletime()
 	(stateScreen==smain)?Screen(stime):Screen(smain);
 	drawScreen(); 
 }
+//Max
+#define VOL_STEP 3
 //-----------------------
  // Compute the encoder
  //----------------------
@@ -434,14 +442,18 @@ void encoderLoop()
 	event_lcd_t evt;
 
 // Encoder loop		
-		newValue = - getValue();
+		//Max
+		//newValue = - getValue();
+		newValue = getValue();
+		newValue2 = getValue2();
+	
 		newButton = getButton();
-		if (newValue != 0) 
+		if (newValue2 != 0) 
 		{
 		//    Serial.print("Encoder: ");Serial.println(newValue);
 			// reset our accelerator
-			if ((newValue >0)&&(oldValue<0)) oldValue = 0;
-			if ((newValue <0)&&(oldValue>0)) oldValue = 0;
+			if ((newValue2 >0)&&(oldValue<0)) oldValue = 0;
+			if ((newValue2 <0)&&(oldValue>0)) oldValue = 0;
 			wakeLcd();
 		}
 		else
@@ -449,6 +461,9 @@ void encoderLoop()
 			// lower accelerator 
 			if (oldValue <0) oldValue++;
 			if (oldValue >0) oldValue--;
+		}
+		if (newValue != 0) {
+			wakeLcd();
 		}
     		
 		if (newButton != Open)
@@ -458,23 +473,29 @@ void encoderLoop()
 			if (newButton == Clicked) {startStop();}
 			if (newButton == DoubleClicked) { toggletime();}
 
+			//Max
 //			if (getPinState() == getpinsActive())
-			if ((newButton == Held)&&(getPinState() == getpinsActive()))
+			/*if ((newButton == Held)&&(getPinState() == getpinsActive()))
 			{   
 				currentValue = newValue;
 				changeStation(newValue);
-			} 
+			} */
 			
 		}	else
 		{
-			if ((stateScreen  != sstation)&&(newValue != 0))
+			//Max
+			//if ((stateScreen  != sstation)&&(newValue != 0))
+			if (newValue2 != 0)
 			{    
 				ESP_LOGD(TAG,"Enc value: %d, oldValue: %d,  incr volume: %d",newValue, oldValue,newValue+(oldValue*3));
 				evt.lcmd = evol;
-				evt.lline = (char*)((uint32_t)newValue+(oldValue*3));
+				//Max
+				//evt.lline = (char*)((uint32_t)newValue2+(oldValue*3));
+				evt.lline = (char*)((uint32_t)VOL_STEP*newValue2);
 				xQueueSend(event_lcd,&evt, 0);
 			} 
-			if ((stateScreen  == sstation)&&(newValue != 0))
+			//if ((stateScreen  == sstation)&&(newValue != 0))
+			if (newValue != 0)
 			{    
 				currentValue += newValue;
 				evt.lcmd = estation;
@@ -482,13 +503,13 @@ void encoderLoop()
 				xQueueSend(event_lcd,&evt, 0);				
 			} 	
 		}		
-		oldValue += newValue;
+		//Max
+		//oldValue += newValue;
+		oldValue += newValue2;
 // end Encoder loop
 
 }
-
-
-
+//-Max
 
  //-----------------------
  // Compute the ir code
@@ -503,83 +524,103 @@ event_ir_t evt;
 		wakeLcd();
 		uint32_t evtir = ((evt.addr)<<8)|(evt.cmd&0xFF);
 		ESP_LOGI(TAG,"IR event: Channel: %x, ADDR: %x, CMD: %x = %X, REPEAT: %d",evt.channel,evt.addr,evt.cmd, evtir,evt.repeat_flag );
+	//Max
 		if (!evt.repeat_flag ) // avoid repetition
 		switch(evtir)
 		{
+		case 0xFF0047: 
+		case 0xFF0040: 
 		case 0xDF2047:
 		case 0xDF2002:
-		case 0xFF0046: 
+		//case 0xFF0046: 
 		case 0xF70812:  /*(" FORWARD");*/  changeStation(+1);  
 		break;
+		case 0xFF0007:
 		case 0xDF2049:
 		case 0xDF2041:
-		case 0xFF0044:
+		//case 0xFF0044:
 		case 0xF70842:
 		case 0xF70815: /*(" LEFT");*/  setRelVolume(-5);  
 		break;
+		case 0xFF0046:
+		case 0xFF0043:
 		case 0xDF204A:
-		case 0xFF0040:
+		//case 0xFF0040:
 		case 0xF7081E: /*(" -OK-");*/ stationOk();     
 		break;
+		case 0xFF0015:
 		case 0xDF204B:
 		case 0xDF2003:
-		case 0xFF0043:
+		//case 0xFF0043:
 		case 0xF70841:
 		case 0xF70814: /*(" RIGHT");*/ setRelVolume(+5);     
 		break; // volume +
+		case 0xFF0045:
+		case 0xFF0044:
 		case 0xDF204D:
 		case 0xDF2009:
-		case 0xFF0015:
+		//case 0xFF0015:
 		case 0xF70813: /*(" REVERSE");*/ changeStation(-1);
 		break;
+		case 0xFF000C:
 		case 0xDF2000:
-		case 0xFF0016:
+		//case 0xFF0016:
 		case 0xF70801: /*(" 1");*/ nbStation('1');   
 		break;
+		case 0xFF0018:
 		case 0xDF2010:
-		case 0xFF0019:
+		//case 0xFF0019:
 		case 0xF70802: /*(" 2");*/ nbStation('2');   
 		break;
+		case 0xFF005E:
 		case 0xDF2011:
-		case 0xFF000D:
+		//case 0xFF000D:
 		case 0xF70803: /*(" 3");*/ nbStation('3');   
 		break;
+		case 0xFF0008:
 		case 0xDF2013:
-		case 0xFF000C:
+		//case 0xFF000C:
 		case 0xF70804: /*(" 4");*/ nbStation('4');   
 		break;
+		case 0xFF001C:
 		case 0xDF2014:
-		case 0xFF0018:
+		//case 0xFF0018:
 		case 0xF70805: /*(" 5");*/ nbStation('5');   
 		break;
+		case 0xFF005A:
 		case 0xDF2015:
-		case 0xFF005E:
+		//case 0xFF005E:
 		case 0xF70806: /*(" 6");*/ nbStation('6');   
 		break;
+		case 0xFF0042:
 		case 0xDF2017:
-		case 0xFF0008:
+		//case 0xFF0008:
 		case 0xF70807: /*(" 7");*/ nbStation('7');   
 		break;
+		case 0xFF0052:
 		case 0xDF2018:
-		case 0xFF001C:
+		//case 0xFF001C:
 		case 0xF70808: /*(" 8");*/ nbStation('8');   
 		break;
+		case 0xFF004A:
 		case 0xDF2019:
-		case 0xFF005A:
+		//case 0xFF005A:
 		case 0xF70809: /*(" 9");*/ nbStation('9');   
 		break;
 		case 0xDF2045:
-		case 0xFF0042:
+		//case 0xFF0042:
 		case 0xF70817: /*(" *");*/   playStationInt(futurNum);   
 		break;
+		case 0xFF0016:
 		case 0xDF201B:
-		case 0xFF0052:
+		//case 0xFF0052:
 		case 0xF70800: /*(" 0");*/ nbStation('0');   
 		break;
 		case 0xDF205B:
-		case 0xFF004A:
+		//case 0xFF004A:
 		case 0xF7081D: /*(" #");*/  stopStation();    
 		break;
+		case 0xFF0009:
 		case 0xDF2007: /*(" Info")*/
 									toggletime();	
 		break;
@@ -590,30 +631,37 @@ event_ir_t evt;
 		if (evt.repeat_flag ) // repetition
 		switch(evtir)
 		{
+		case 0xFF0047:
+		case 0xFF0040:
 		case 0xDF2047:
 		case 0xDF2002:			
-		case 0xFF0046: 
+		//case 0xFF0046: 
 		case 0xF70812:  /*(" FORWARD");*/  changeStation(+1); 
 		break;
+		case 0xFF0045:
+		case 0xFF0044:
 		case 0xDF204D:
 		case 0xDF2009:
-		case 0xFF0015:
+		//case 0xFF0015:
 		case 0xF70813:  /*(" REVERSE");*/ changeStation(-1); 
 		break;
+		case 0xFF0007:
 		case 0xDF2049:
 		case 0xDF2041:
-		case 0xFF0044:
+		//case 0xFF0044:
 		case 0xF70842:
 		case 0xF70815: /*(" LEFT");*/  setRelVolume(-5);  
 		break;
+		case 0xFF0015:
 		case 0xDF204B:
 		case 0xDF2003:
-		case 0xFF0043:
+		//case 0xFF0043:
 		case 0xF70841:
 		case 0xF70814: /*(" RIGHT");*/ setRelVolume(+5); 
 		break; // volume +
 		default:;
-		} 						
+		} 	
+		//-Max
 	}
 }
  
@@ -639,7 +687,9 @@ void task_addon(void *pvParams)
 	// Encoder	init
 	//enum modeStateEncoder { encVolume, encStation } ;
 	//static enum modeStateEncoder stateEncoder = encVolume;
-	ClickEncoderInit(PIN_ENC_A, PIN_ENC_B, PIN_ENC_BTN);
+	//Max
+	//ClickEncoderInit(PIN_ENC_A, PIN_ENC_B, PIN_ENC_BTN);
+	ClickEncoderInit2(PIN_ENC_A, PIN_ENC_B, PIN_ENC_A2, PIN_ENC_B2, PIN_ENC_BTN);
 	serviceEncoder = &service;	; // connect the 1ms interruption
 	serviceAddon = &ServiceAddon;	; // connect the 1ms interruption
 	futurNum = getCurrentStation();

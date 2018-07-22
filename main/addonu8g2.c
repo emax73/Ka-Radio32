@@ -16,6 +16,7 @@
 #include "esp_log.h"
 #include "logo.h"
 #include "interface.h"
+
 #define TAG  "addonu8g2"
 
 // nams <--> num of line
@@ -92,7 +93,9 @@ void setfont8(sizefont size)
 			break;
 			case 64:
 			default: // 
-			u8g2_SetFont(&u8g2, u8g2_font_6x12_tf);
+			//Max
+			//u8g2_SetFont(&u8g2, u8g2_font_6x12_tf);
+			u8g2_SetFont(&u8g2, u8g2_font_6x12_t_cyrillic);
 			;
 		}
 		break;
@@ -110,7 +113,9 @@ void setfont8(sizefont size)
 			break;
 			case 64:
 			default: // 
-			u8g2_SetFont(&u8g2, u8g2_font_7x14_tf);
+			//Max
+			//u8g2_SetFont(&u8g2, u8g2_font_7x14_tf);
+			u8g2_SetFont(&u8g2, u8g2_font_7x14_t_cyrillic);
 			;			
 
 		}
@@ -227,6 +232,26 @@ void drawLinesU8g2()
 {
 u8g2_SendBuffer(&u8g2); 
 }
+
+//Max
+void eraseSlashes(char * str) {
+	//Symbols: \" \' \\ \? \/
+	char * sym = str, * sym1;
+	if (str != NULL) {
+		while (*sym != 0) {
+			if (*sym == 0x5c) {
+				sym1 = sym + 1;
+				if (*sym1 == 0x22 || *sym1 == 0x27 || *sym1 == 0x5c || *sym1 == 0x3f || *sym1 == 0x2f) {
+					*sym = 0x1f; //Erase \ to non-printable symbol
+					sym++;
+				}	
+			} 
+			sym++;
+		}
+	} 	
+}
+//-Max
+
 ////////////////////////////////////////
 // draw all lines
 void drawFrameU8g2(uint8_t mTscreen,struct tm *dt)
@@ -265,6 +290,8 @@ void drawFrameU8g2(uint8_t mTscreen,struct tm *dt)
 		
 		if (lline[i] != NULL)
 		{
+			//Max
+			eraseSlashes(lline[i]);
 			if (i == 0) 
 			{       
 				if (nameNum[0] ==0)  u8g2_DrawUTF8(&u8g2,1,0,lline[i]+iline[i]);

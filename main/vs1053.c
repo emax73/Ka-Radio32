@@ -102,7 +102,9 @@ void VS1053_HW_init(){
 	ESP_ERROR_CHECK(spi_bus_add_device(KSPI, &devcfg, &vsspi));
 	
 	//high speed	
-	devcfg.clock_speed_hz = 6000000;
+	//Max
+	//devcfg.clock_speed_hz = 6000000;
+	devcfg.clock_speed_hz = 10000000;
 	devcfg.spics_io_num= PIN_NUM_XDCS;               //XDCS pin
 	devcfg.command_bits = 0;
 	devcfg.address_bits = 0;
@@ -618,7 +620,9 @@ void VS1053_flush_cancel(uint8_t mode) {  // 0 only fillbyte  1 before play    2
 
 
 IRAM_ATTR void vsTask(void *pvParams) { 
-#define VSTASKBUF	1024
+//Max
+//#define VSTASKBUF	1024
+#define VSTASKBUF	2*1024
 	portBASE_TYPE uxHighWaterMark;
 	uint8_t b[VSTASKBUF];
 //	struct device_settings *device;
