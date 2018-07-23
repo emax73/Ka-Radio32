@@ -469,7 +469,9 @@ void encoderLoop()
 		if (newButton != Open)
 		{ 
 			wakeLcd();
-			ESP_LOGD(TAG,"Button: %d",newButton);
+			//Max
+			//ESP_LOGD(TAG,"Button: %d",newButton);
+			ESP_LOGI(TAG,"Button: %d",newButton);
 			if (newButton == Clicked) {startStop();}
 			if (newButton == DoubleClicked) { toggletime();}
 
@@ -487,7 +489,10 @@ void encoderLoop()
 			//if ((stateScreen  != sstation)&&(newValue != 0))
 			if (newValue2 != 0)
 			{    
-				ESP_LOGD(TAG,"Enc value: %d, oldValue: %d,  incr volume: %d",newValue, oldValue,newValue+(oldValue*3));
+				//Max
+				//ESP_LOGD(TAG,"Enc value: %d, oldValue: %d,  incr volume: %d",newValue, oldValue,newValue+(oldValue*3));
+				ESP_LOGI(TAG,"Encoder 2: %d",newValue2);
+				
 				evt.lcmd = evol;
 				//Max
 				//evt.lline = (char*)((uint32_t)newValue2+(oldValue*3));
@@ -497,6 +502,9 @@ void encoderLoop()
 			//if ((stateScreen  == sstation)&&(newValue != 0))
 			if (newValue != 0)
 			{    
+				//Max
+				ESP_LOGI(TAG,"Encoder 1: %d",newValue);
+			
 				currentValue += newValue;
 				evt.lcmd = estation;
 				evt.lline = (char*)((uint32_t)newValue);
