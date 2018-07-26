@@ -621,8 +621,8 @@ void VS1053_flush_cancel(uint8_t mode) {  // 0 only fillbyte  1 before play    2
 
 IRAM_ATTR void vsTask(void *pvParams) { 
 //Max
-//#define VSTASKBUF	1024
-#define VSTASKBUF	3*1024
+#define VSTASKBUF	1024
+//#define VSTASKBUF	3*1024
 	portBASE_TYPE uxHighWaterMark;
 	uint8_t b[VSTASKBUF];
 //	struct device_settings *device;

@@ -37,7 +37,7 @@ static long fifoOvfCnt, fifoUdrCnt;
 //Low watermark where we restart the reader thread.
 //Max
 //#define FIFO_LOWMARK (16*1024)
-#define FIFO_LOWMARK (40*1024)
+#define FIFO_LOWMARK (32*1024)
 
 #ifdef FAKE_SPI_BUFF
 //Re-define a bunch of things so we use the internal buffer
@@ -178,4 +178,3 @@ long spiRamGetUnderrunCt() {
 	xSemaphoreGive(mux);
 	return ret;
 }
-
