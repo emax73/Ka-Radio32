@@ -930,13 +930,7 @@ void app_main()
 	xTaskCreatePinnedToCore(clientTask, "clientTask", 3000, NULL, 4, &pxCreatedTask,0); 
 	ESP_LOGI(TAG, "%s task: %x","clientTask",(unsigned int)pxCreatedTask);	
 	
-<<<<<<< HEAD
-        //Max
-	//xTaskCreatePinnedToCore(serversTask, "serversTask", 2400, NULL, 3, &pxCreatedTask,0); 
-   	xTaskCreatePinnedToCore(serversTask, "serversTask", 4800, NULL, 3, &pxCreatedTask,0); 
-=======
-    xTaskCreatePinnedToCore(serversTask, "serversTask", 3000, NULL, 3, &pxCreatedTask,0); 
->>>>>>> 337006eaecdac70b576751ae2fe3d7947e9d60d0
+	xTaskCreatePinnedToCore(serversTask, "serversTask", 3000, NULL, 3, &pxCreatedTask,0); 
 	ESP_LOGI(TAG, "%s task: %x","serversTask",(unsigned int)pxCreatedTask);	
 	
 	xTaskCreatePinnedToCore (task_addon, "task_addon", 2600, NULL, 10, &pxCreatedTask,1);  //high priority for the spi else too slow due to ucglib
