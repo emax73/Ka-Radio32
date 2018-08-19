@@ -624,7 +624,7 @@ IRAM_ATTR void vsTask(void *pvParams) {
 //#define VSTASKBUF	1024
 #define VSTASKBUF	3*1024
 	portBASE_TYPE uxHighWaterMark;
-	uint8_t b[VSTASKBUF];
+	uint8_t  b[VSTASKBUF];
 //	struct device_settings *device;
 	uint16_t size ,s;
 
