@@ -674,6 +674,7 @@ event_ir_t evt;
 }
  
  // IO task
+ /*
  void task_addonio(void *pvParams)
  {
 	 while (1)
@@ -684,6 +685,7 @@ event_ir_t evt;
 	}
 	vTaskDelete( NULL ); 
  }
+ */
 //------------------- 
 // Main task of addon
 //------------------- 
@@ -718,7 +720,7 @@ void task_addon(void *pvParams)
 	{
 
 		encoderLoop(); // compute the encoder
-		
+//		vTaskDelay(5);
 		irLoop();
 
 		while (xQueueReceive(event_lcd, &evt, 0))
