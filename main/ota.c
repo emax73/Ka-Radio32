@@ -39,9 +39,12 @@
 #include "webclient.h"
 
 #define BUFFSIZE 1024
-
-const char strupd[]  = {\
+//Max
+/*const char strupd[]  = {\
 "GET /%s.bin HTTP/1.1\r\nHost: karadio.karawin.fr:80\r\n\r\n"};
+*/
+const char strupd[]  = {\
+"GET /karadio/%s.bin HTTP/1.1\r\nHost: cosmostat.com:80\r\n\r\n"};
 
 /*an ota data write buffer ready to write to the flash*/
 static char ota_write_data[BUFFSIZE + 1] = { 0 };
@@ -137,7 +140,11 @@ static void ota_task(void *pvParameter)
 	
 		
 	// prepare connection to the server
-	serv =(struct hostent*)gethostbyname("karadio.karawin.fr");
+
+	//Max
+	//serv =(struct hostent*)gethostbyname("karadio.karawin.fr");
+	serv =(struct hostent*)gethostbyname("cosmostat.com");
+
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if(sockfd >= 0) ;//{printf("WebClient Socket created\n"); }
 	else {ESP_LOGE(TAG,"socket create errno: %d",errno); goto exit;}
