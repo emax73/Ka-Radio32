@@ -273,15 +273,8 @@ static const uint8_t u8x8_d_ssd1322_256x64_init_seq[] = {
   U8X8_CA(0xa1, 0x00),			/* display start line */  
   //Max
   //U8X8_CAA(0xa0, 0x14, 0x11),	/* Set Re-Map / Dual COM Line Mode */  
-  U8X8_CAA(0xa0, 0x14, 0x001),	/* Set Re-Map / Dual COM Line Mode */  
-<<<<<<< HEAD
-
-  U8X8_CA(0xab, 0x01),			/* Enable Internal VDD Regulator */  
-  U8X8_CAA(0xb4, 0xa0, 0x005|0x0fd),	/* Display Enhancement A */  
-  U8X8_CA(0xc1, 0xff),			/* contrast */  
   //U8X8_CAA(0xa0, 0x06, 0x011),	/* Set Re-Map / Dual COM Line Mode */  
-=======
->>>>>>> karawin-master
+  U8X8_CAA(0xa0, 0x14, 0x01),	/* Set Re-Map for right top position / Dual COM Line Mode */  
   U8X8_CA(0xab, 0x01),			/* Enable Internal VDD Regulator */  
   U8X8_CAA(0xb4, 0xa0, 0x005|0x0fd),	/* Display Enhancement A */  
   //U8X8_CA(0xc1, 0x9f),			/* contrast */  
