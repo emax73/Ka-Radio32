@@ -35,11 +35,6 @@ static xSemaphoreHandle mux;
 static long fifoOvfCnt, fifoUdrCnt;
 
 //Low watermark where we restart the reader thread.
-<<<<<<< HEAD
-//Max
-//#define FIFO_LOWMARK (16*1024)
-=======
->>>>>>> 337006eaecdac70b576751ae2fe3d7947e9d60d0
 #define FIFO_LOWMARK (32*1024)
 
 #ifdef FAKE_SPI_BUFF
