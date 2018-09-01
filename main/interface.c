@@ -20,6 +20,7 @@
 #include "ota.h"
 #include "spiram_fifo.h"
 #include "addon.h"
+#include "addonu8g2.h"
 #include "app_main.h"
 //#include "rda5807Task.c"
 
@@ -28,6 +29,7 @@
 #include "lwip/netdb.h"
 
 #include "esp_system.h"
+#include "mdns.h"
 
 #include "esp_wifi.h"
 
@@ -117,7 +119,11 @@ sys.ledgpio(\"x\"): Change the default Led GPIO (4) to x\n\
 "};
 const char stritHELP4[]  = {"\
 sys.ddmm: display the date format\n\
-sys.ddmm(\"x\"): Change the date format. 0:MMDD, 1:DDMM\n\
+sys.ddmm(\"x\"): Change and display the date format. 0:MMDD, 1:DDMM\n\
+sys.host: display the hostname for mDNS\n\
+sys.host(\"your hostname\"): change and display the hostname for mDNS\n\
+sys.rotat: display the lcd rotation option\n\
+sys.rotat(\"x\"): Change and display the lcd rotation option (reset needed). 0:no rotation, 1: rotation\n\
 ///////////\n\
   Other\n\
 ///////////\n\
@@ -139,6 +145,7 @@ void clientVol(char *s);
 #define MAX_WIFI_STATIONS 50
 bool inside = false;
 static uint8_t ddmm;
+static uint8_t rotat;
 uint8_t getDdmm()
 {
 	return ddmm;
@@ -147,7 +154,14 @@ void setDdmm(uint8_t dm)
 {
 	ddmm = dm;
 }
-
+uint8_t getRotat()
+{
+	return rotat;
+}
+void setRotat(uint8_t dm)
+{
+	rotat = dm;
+}
 static bool autoWifi = true; // auto reconnect wifi if disconnected
 bool getAutoWifi(void)
 { return autoWifi;}
@@ -579,6 +593,7 @@ void sysI2S(char* s)
 	kprintf("\n##I2S speed: %d, 0=48kHz, 1=96kHz, 2=192kHz#\n",speed);
 	free(device);
 }
+
 void sysUart(char* s)
 {
 	bool empty = false;
@@ -613,6 +628,7 @@ void sysUart(char* s)
 	kprintf("\n%sUART= %d# on next reset\n",msgsys,device->uartspeed);	
 	free(device);
 }
+
 void clientVol(char *s)
 {
     char *t = strstr(s, parslashquote);
@@ -644,6 +660,7 @@ void clientVol(char *s)
     }	
 }
 
+// option for loading or not the pacth of the vs1053
 void syspatch(char* s)
 {
     char *t = strstr(s, parslashquote);
@@ -676,7 +693,7 @@ void syspatch(char* s)
 	free(device);	
 }
 
-
+// the gpio to use for the led indicator
 void sysledgpio(char* s)
 {
     char *t = strstr(s, parslashquote);
@@ -703,8 +720,26 @@ void sysledgpio(char* s)
 	kprintf("##Led GPIO is now %d\n",value);
 	free(device);	
 }
+uint8_t getLedGpio()
+{
+	struct device_settings *device;
+	if (led_gpio == 255)
+	{
+		device = getDeviceSettings();
+		uint8_t ledgpio = device->led_gpio;
+		if (ledgpio == 0) {
+			ledgpio = 4;
+			device->led_gpio = ledgpio;
+			led_gpio = ledgpio;
+			saveDeviceSettings(device);
+		}
+		free (device);
+		return ledgpio;	
+	} 
+	return led_gpio;	
+}
 
-
+// display or change the lcd type
 void syslcd(char* s)
 {
     char *t = strstr(s, parslashquote);
@@ -731,6 +766,7 @@ void syslcd(char* s)
 
 }
 
+// display or change the DDMM display mode
 void sysddmm(char* s)
 {
     char *t = strstr(s, parslashquote);
@@ -753,7 +789,10 @@ void sysddmm(char* s)
     }	
 	uint8_t value = atoi(t+2);
 	device = getDeviceSettings();
-	device->ddmm = value;
+	if (value == 0)
+		device->options32 &= NT_DDMM;
+	else 
+		device->options32 |= T_DDMM;
 	ddmm = value;
 	saveDeviceSettings(device);	
 	if (ddmm)
@@ -761,18 +800,92 @@ void sysddmm(char* s)
 	else
 		kprintf("##Time is MMDD#\n");
 	free(device);	
-
 }
 
+// display or change the rotation lcd mode
+void sysrotat(char* s)
+{
+    char *t = strstr(s, parslashquote);
+	struct device_settings *device;
 
+	kprintf("##Lcd rotation is ");
+	if(t == NULL)
+	{
+		if (rotat)
+			kprintf("on#\n");
+		else
+			kprintf("off#\n");
+		return;
+	}
+	char *t_end  = strstr(t, parquoteslash);
+    if(t_end == NULL)
+    {
+		kprintf(stritCMDERROR);
+		return;
+    }	
+	uint8_t value = atoi(t+2);
+	device = getDeviceSettings();
+	if (value == 0)
+		device->options32 &= NT_ROTAT;
+	else 
+		device->options32 |= T_ROTAT;
+	rotat = value;
+	saveDeviceSettings(device);	
+	if (rotat)
+		kprintf("on#\n");
+	else
+		kprintf("off#\n");
+	free(device);	
+}
+
+/*
+// display or change the charset. 0:latin, 1:cyrillic
+void syscharset(char* s)
+{
+    char *t = strstr(s, parslashquote);
+	struct device_settings *device;
+
+	kprintf("##Charset: ");
+	if(t == NULL)
+	{
+		if (getCharset())
+			kprintf("Cyrillic#\n");
+		else
+			kprintf("Latin#\n");
+		return;
+	}
+	char *t_end  = strstr(t, parquoteslash);
+    if(t_end == NULL)
+    {
+		kprintf(stritCMDERROR);
+		return;
+    }	
+	uint8_t value = atoi(t+2);
+	device = getDeviceSettings();
+	if (value == 0)
+		device->options32 &= NT_CHARSET;
+	else 
+		device->options32 |= T_CHARSET;
+	setCharset(value);
+	saveDeviceSettings(device);	
+	if (getCharset())
+		kprintf("Cyrillic#\n");
+	else
+		kprintf("Latin#\n");
+	free(device);	
+}
+*/
+
+// Timer in seconds to switch off the lcd
 void syslcdout(char* s)
 {
     char *t = strstr(s, parslashquote);
 	struct device_settings *device;
 	device = getDeviceSettings();
+	kprintf("##LCD out is ");
 	if(t == NULL)
 	{
-		kprintf("##LCD out is %d#\n",device->lcd_out);
+		kprintf("%d#\n",device->lcd_out);
 		free(device);
 		return;
 	}
@@ -787,12 +900,24 @@ void syslcdout(char* s)
 	device->lcd_out = value; 
 	lcd_out = value;
 	saveDeviceSettings(device);	
-	kprintf("##LCD out is in %d#\n",value);
+	kprintf("%d#\n",value);
 	wakeLcd();
 	free(device);	
 
 }
+uint32_t getLcdOut()
+{
+	struct device_settings *device;
+	if (lcd_out == 0xFFFFFFFF)
+	{
+		device = getDeviceSettings();
+		lcd_out = device->lcd_out;
+		free (device);
+	} 
+	return lcd_out;	
+}
 
+// mode of the led indicator. Blink or play/stop
 void sysled(char* s)
 {
     char *t = strstr(s, parslashquote);
@@ -823,37 +948,10 @@ void sysled(char* s)
 	free(device);
 	
 }
-uint8_t getLedGpio()
-{
-	struct device_settings *device;
-	if (led_gpio == 255)
-	{
-		device = getDeviceSettings();
-		uint8_t ledgpio = device->led_gpio;
-		if (ledgpio == 0) {
-			ledgpio = 4;
-			device->led_gpio = ledgpio;
-			led_gpio = ledgpio;
-			saveDeviceSettings(device);
-		}
-		free (device);
-		return ledgpio;	
-	} 
-	return led_gpio;	
-}
 
-uint32_t getLcdOut()
-{
-	struct device_settings *device;
-	if (lcd_out == 0xFFFFFFFF)
-	{
-		device = getDeviceSettings();
-		lcd_out = device->lcd_out;
-		free (device);
-	} 
-	return lcd_out;	
-}
 
+
+// display or change the tzo for ntp
 void tzoffset(char* s)
 {
 	char *t = strstr(s, parslashquote);
@@ -881,12 +979,62 @@ void tzoffset(char* s)
 	addonDt(); // for addon, force the dt fetch
 }
 
+// print the heapsize
 void heapSize()
 {
 	int hps = xPortGetFreeHeapSize( );
 	kprintf("%sHEAP: %d #\n",msgsys,hps);
 }
 
+//display or change the hostname and services
+void hostname(char* s)
+{
+	char *t = strstr(s, parslashquote);
+	struct device_settings *device;
+	
+	device = getDeviceSettings();
+	if(t == NULL)
+	{
+		kprintf("##SYS.HOST#: %s.local\n  IP:%s #\n",device->hostname,getIp());
+		free(device);
+		return;
+	}
+	
+	t +=2;
+	char *t_end  = strstr(t, parquoteslash);
+    if(t_end == NULL)
+    {
+		kprintf(stritCMDERROR);
+		free(device);
+		return;
+    }
+		
+    char *hn = (char*) malloc((t_end-t+1)*sizeof(char));
+    if(hn != NULL)
+    {
+		if (t_end-t ==0)
+			strcpy(	device->hostname, "karadio32");
+		else
+		{	
+			if (t_end-t >= HOSTLEN) t_end = t+HOSTLEN;
+			strncpy(device->hostname,t,(t_end-t)*sizeof(char));
+			device->hostname[(t_end-t)*sizeof(char)] = 0;
+		}
+		saveDeviceSettings(device);	
+		ESP_ERROR_CHECK(mdns_service_remove("_http", "_tcp"));
+		ESP_ERROR_CHECK(mdns_service_remove("_telnet", "_tcp"));
+		vTaskDelay(1);
+		kprintf("##SYS.HOST#: %s.local\n  IP:%s #\n",device->hostname,getIp());
+		ESP_ERROR_CHECK(mdns_hostname_set(device->hostname));
+		ESP_ERROR_CHECK(mdns_instance_name_set(device->hostname));
+		vTaskDelay(1);
+		ESP_ERROR_CHECK(mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0));	
+		ESP_ERROR_CHECK(mdns_service_add(NULL, "_telnet", "_tcp", 23, NULL, 0));
+		free(hn);
+	}
+	free(device);	
+	
+}
 
 void displayLogLevel()
 {
@@ -1031,6 +1179,9 @@ void checkCommand(int size, char* s)
 		else if(startsWith (  "lcdo",tmp+4)) 	syslcdout(tmp); // lcdout timer to switch off the lcd
 		else if(startsWith (  "lcd",tmp+4)) 	syslcd(tmp);
 		else if(startsWith (  "ddmm",tmp+4)) 	sysddmm(tmp);
+		else if(startsWith (  "host",tmp+4)) 	hostname(tmp);
+		else if(startsWith (  "rotat",tmp+4)) 	sysrotat(tmp);
+//		else if(startsWith (  "charset",tmp+4)) syscharset(tmp);
 		else printInfo(tmp);
 	}
 	else 

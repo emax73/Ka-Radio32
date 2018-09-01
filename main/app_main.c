@@ -46,6 +46,7 @@ Copyright (C) 2017  KaraWin
 #include "lwip/api.h"
 #include "lwip/tcp.h"
 #include "lwip/dns.h"
+#include "mdns.h"
 
 #include "app_main.h"
 
@@ -58,7 +59,7 @@ Copyright (C) 2017  KaraWin
 #include <u8g2.h>
 #include "u8g2_esp32_hal.h"
 #include "addon.h"
-
+#include "addonu8g2.h"
 
 
 
@@ -614,13 +615,11 @@ void start_network(){
 			break;
 			}
 		}
-		saveDeviceSettings(device);		
+		saveDeviceSettings(device);	
+		tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, "karadio32");	
 	}
 	free(device);	
 	lcd_state("IP found");	
-  /* start mDNS */
-    // xTaskCreatePinnedToCore(&mdns_task, "mdns_task", 2048, wifi_event_group, 5, NULL, 0);
-
 }
 
 
@@ -637,6 +636,7 @@ void timerTask(void* p) {
 	gpio_output_conf(getLedGpio());
 	gpio_set_level(getLedGpio(),0);	
 	cCur = FlashOff*10;
+	device = getDeviceSettings();
 	
 	while(1) {
 		// read and treat the timer queue events
@@ -662,7 +662,6 @@ void timerTask(void* p) {
 			}
 			taskYIELD();
 		}
-//		taskYIELD();
 		if (ledStatus)
 		{
 			
@@ -679,22 +678,29 @@ void timerTask(void* p) {
 					gpio_set_level(getLedGpio(),1);	
 					stateLed = true;
 					cCur = FlashOn*10;
-					device = getDeviceSettings();
-					if (device != NULL)
-					{	
-						if (device->vol != getIvol()){ 			
-							device->vol = getIvol();
-							taskYIELD();
-							saveDeviceSettingsVolume(device);
-//							ESP_LOGD("timerTask",striWATERMARK,uxTaskGetStackHighWaterMark( NULL ),xPortGetFreeHeapSize( ));
-						}
-						free(device);	
+					if (device->vol != getIvol()){ 			
+						device->vol = getIvol();
+						taskYIELD();
+						saveDeviceSettingsVolume(device);
+//						ESP_LOGD("timerTask",striWATERMARK,uxTaskGetStackHighWaterMark( NULL ),xPortGetFreeHeapSize( ));
 					}											
 				}
 				ctime = 0;
 			}			
-		}
-		taskYIELD();
+		} else
+		{
+			if (ctime >= cCur)
+			{
+				if (device->vol != getIvol()){ 			
+					device->vol = getIvol();
+					taskYIELD();
+					saveDeviceSettingsVolume(device);
+//					ESP_LOGD("timerTask",striWATERMARK,uxTaskGetStackHighWaterMark( NULL ),xPortGetFreeHeapSize( ));
+				}
+				ctime = 0;
+			}			
+		}			
+//		taskYIELD();
 	}
 //	printf("t0 end\n");
 	vTaskDelete( NULL ); // stop the task (never reached)
@@ -759,6 +765,8 @@ void app_main()
 	struct device_settings *device;
 	uint32_t uspeed;
 	xTaskHandle pxCreatedTask;
+	esp_err_t err;
+
 	ESP_LOGI(TAG, "starting app_main()");
     ESP_LOGI(TAG, "RAM left: %u", esp_get_free_heap_size());
 
@@ -766,7 +774,7 @@ void app_main()
 	ESP_LOGE(TAG, "Running partition type %d subtype %d (offset 0x%08x)",
              running->type, running->subtype, running->address);
     // Initialize NVS.
-    esp_err_t err = nvs_flash_init();
+    err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
         // OTA app partition table has a smaller NVS partition size than the non-OTA
         // partition table. This size mismatch may cause NVS initialization to fail.
@@ -815,8 +823,7 @@ void app_main()
 	// log level
 	setLogLevel(device->trace_level);
 	//time display
-	setDdmm(device->ddmm);
-	
+	setDdmm((device->options32)&T_DDMM);
 	//SPI init for the vs1053 and lcd if spi.
 	VS1053_spi_init(KSPI);
 
@@ -825,6 +832,11 @@ void app_main()
 	//ESP_LOGE(TAG,"Corrupt1 %d",heap_caps_check_integrity(MALLOC_CAP_DMA,1));
 	
 	ESP_LOGE(TAG,"LCD Type %d",device->lcd_type);
+	//lcd rotation
+	setRotat((device->options32)&T_ROTAT) ;	
+//	//font set latin or cyrillic
+//	setCharset((device->options32)&T_CHARSET);
+	
 	lcd_init(device->lcd_type);
 	
 /*	
@@ -875,9 +887,7 @@ void app_main()
 		saveDeviceSettings(device);
 	}	
 	
-	// volume
-	setIvol( device->vol);
-	
+
 	// Version infos
 	ESP_LOGI(TAG, "Release %s, Revision %s",RELEASE,REVISION);
 	ESP_LOGI(TAG, "SDK %s",esp_get_idf_version());
@@ -885,7 +895,10 @@ void app_main()
 
 	lcd_welcome("");
 	
-	
+	// volume
+	setIvol( device->vol);
+	ESP_LOGI(TAG, "Volume set to %d",device->vol);
+		
 	
 // queue for events of the sleep / wake timers
 	event_queue = xQueueCreate(10, sizeof(queue_event_t));
@@ -906,6 +919,33 @@ void app_main()
 //-----------------------------------------------------
 	clientInit();	
 
+	//initialize mDNS service
+    err = mdns_init();
+    if (err) 
+        ESP_LOGE(TAG,"mDNS Init failed: %d", err);
+	else
+		ESP_LOGI(TAG,"mDNS Init ok"); 
+	
+	//set hostname and instance name
+	if (strlen(device->hostname) == 0)
+	{	
+		err = mdns_hostname_set("karadio32");
+		strcat(device->hostname,"karadio32");
+	} else
+	{	
+		err = mdns_hostname_set(device->hostname);
+	}	
+	if (err) 
+        ESP_LOGE(TAG,"Hostname Init failed: %d", err);	
+
+	ESP_ERROR_CHECK(mdns_instance_name_set(device->hostname));
+	
+	ESP_ERROR_CHECK(mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0));	
+ 
+	ESP_ERROR_CHECK(mdns_service_add(NULL, "_telnet", "_tcp", 23, NULL, 0));	
+
+	
+	
     // init player config
     player_config = (player_t*)calloc(1, sizeof(player_t));
     player_config->command = CMD_NONE;

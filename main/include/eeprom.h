@@ -9,16 +9,26 @@
 #include "esp_system.h"
 #include "audio_renderer.h"
 
-//define for bit array in theme
+//define for bit array 
 #define T_THEME 	1
 #define NT_THEME	0xFE
 #define T_PATCH 	2
 #define NT_PATCH	0xFD
 #define T_LED		4
 #define NT_LED		0xFB
+#define T_DDMM		1
+#define NT_DDMM		0xFE
+#define T_ROTAT		2
+#define NT_ROTAT	0xFD
+#define T_CHARSET	0x0C
+#define NT_CHARSET	0xF3
+
 #define APMODE		0
 #define STA1		1
 #define STA2		2
+#define SSIDLEN		32
+#define PASSLEN		64
+#define HOSTLEN		24
 
 struct device_settings {
 	uint16_t cleared; 		// 0xAABB if initialized
@@ -30,10 +40,10 @@ struct device_settings {
 	uint8_t ipAddr2[4];		
 	uint8_t mask2[4];		
 	uint8_t gate2[4];			
-	char ssid1[32]; 
-	char ssid2[32]; 
-	char pass1[64];
-	char pass2[64];
+	char ssid1[SSIDLEN]; 
+	char ssid2[SSIDLEN]; 
+	char pass1[PASSLEN];
+	char pass2[PASSLEN];
 	uint8_t current_ap; // 0 = AP mode, else STA mode: 1 = ssid1, 2 = ssid2
 	uint8_t vol;
 	int8_t treble;
@@ -56,8 +66,10 @@ struct device_settings {
 	uint8_t lcd_type; // the lcd in use
 	uint8_t led_gpio; // the gpio of the led
 	uint32_t lcd_out;	// timeout in seconds to switch off the lcd. 0 = no timeout
-	uint8_t ddmm;		// 0 = MMDD, 1 = DDMM  in the time display
-	char filler[32]; 
+	uint8_t options32;	// bit0:0 = MMDD, 1 = DDMM  in the time display, bit1: 0= lcd without rotation  1 = lcd rotated 180
+						// (removed) bit 2&3: Latin 0 or Cyrillic 1. two bits for extentions
+	char hostname[HOSTLEN];
+	char filler[8]; 
 
 };
 
