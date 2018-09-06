@@ -17,7 +17,17 @@
 #include "logo.h"
 #include "interface.h"
 #include "eeprom.h"
-
+/*==========================================*/
+//#include "u8g2-karadio32_fonts.h"
+extern const uint8_t u8g2_font_4x6_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_4x6_t_latcyr");
+extern const uint8_t u8g2_font_5x7_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_5x7_t_latcyr");
+extern const uint8_t u8g2_font_5x8_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_5x8_t_latcyr");
+extern const uint8_t u8g2_font_6x12_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_6x12_t_latcyr");
+extern const uint8_t u8g2_font_6x13_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_6x13_t_latcyr");
+extern const uint8_t u8g2_font_7x13_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_7x13_t_latcyr");
+extern const uint8_t u8g2_font_8x13_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_8x13_t_latcyr");
+extern const uint8_t u8g2_font_9x15_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_9x15_t_latcyr");
+extern const uint8_t u8g2_font_10x20_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_10x20_t_latcyr");
 #define TAG  "addonu8g2"
 
 // nams <--> num of line
@@ -219,7 +229,8 @@ unsigned len ;
 	{
 	   if (tline[i]>0) 
 	   {
-	     if (tline[i] == 4) {iline[i]= 0;markDrawU8g2(i);}
+	     if (tline[i] == 4) {iline[i]= 0;
+		 markDrawU8g2(i);}
 	     tline[i]--;		 
 	   } 
 	   else
@@ -229,19 +240,20 @@ unsigned len ;
 				len = u8g2_GetUTF8Width(&u8g2,lline[i]+iline[i]);
 				if (i == 0)	 len += u8g2_GetUTF8Width(&u8g2,nameNum);
 				if (len >= x) 
-				{iline[i]++;
-				//Max
-				while (((*(lline[i]+iline[i])) & 0xc0) == 0x80) {
+				{
 					iline[i]++;
+					//Max
+					while (((*(lline[i]+iline[i])) & 0xc0) == 0x80) {
+						iline[i]++;
+					}
+					markDrawU8g2(i);
 				}
-				markDrawU8g2(i);}
 				else 
 					tline[i] = 6;
 		   }
 	   }
 	}
 }
-
 // Bottom of screens
 static void screenBottomU8g2()
 {
