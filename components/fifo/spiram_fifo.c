@@ -24,7 +24,7 @@
 //#include "playerconfig.h"
 #define FAKE_SPI_BUFF
 
-#define SPIREADSIZE 64
+#define SPIREADSIZE 32
 
 static unsigned fifoRpos;
 static unsigned fifoWpos;
@@ -41,7 +41,7 @@ static long fifoOvfCnt, fifoUdrCnt;
 //Re-define a bunch of things so we use the internal buffer
 #undef SPIRAMSIZE
 //allocate enough for about one mp3 frame
-#define SPIRAMSIZE (64*1024)
+#define SPIRAMSIZE (40*1024)
 
 static   char fakespiram[SPIRAMSIZE];
 #define spiRamInit() while(0)
