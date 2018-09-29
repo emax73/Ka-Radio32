@@ -245,7 +245,6 @@ static const u8x8_display_info_t u8x8_ssd1322_256x64_display_info =
   /* post_reset_wait_ms = */ 100, /* far east OLEDs need much longer setup time */
   /* sda_setup_time_ns = */ 50,		/* SSD1322: 15ns, but cycle time is 100ns, so use 100/2 */
   /* sck_pulse_width_ns = */ 50,	/* SSD1322: 20ns, but cycle time is 100ns, so use 100/2, AVR: below 70: 8 MHz, >= 70 --> 4MHz clock */
-  //Max
   /* sck_clock_hz = */ 20000000UL,	/* since Arduino 1.6.0, the SPI bus speed in Hz. Should be  1000000000/sck_pulse_width_ns, increased to 8MHz (issue 215), 10 MHz (issue 301) */
   /* spi_mode = */ 0,		/* active high, rising edge */
   /* i2c_bus_clock_100kHz = */ 4,
@@ -272,10 +271,8 @@ static const uint8_t u8x8_d_ssd1322_256x64_init_seq[] = {
   U8X8_CA(0xca, 0x3f),			/* multiplex ratio 1/64 Duty (0x0F~0x3F) */  
   U8X8_CA(0xa2, 0x00),			/* display offset, shift mapping ram counter */  
   U8X8_CA(0xa1, 0x00),			/* display start line */  
-  //Max
-  //U8X8_CAA(0xa0, 0x14, 0x11),	/* Set Re-Map / Dual COM Line Mode */  
+  U8X8_CAA(0xa0, 0x14, 0x11),	/* Set Re-Map / Dual COM Line Mode */  
   //U8X8_CAA(0xa0, 0x06, 0x011),	/* Set Re-Map / Dual COM Line Mode */  
-  U8X8_CAA(0xa0, 0x14, 0x01),	/* Set Re-Map for right top position / Dual COM Line Mode */  
   U8X8_CA(0xab, 0x01),			/* Enable Internal VDD Regulator */  
   U8X8_CAA(0xb4, 0xa0, 0x005|0x0fd),	/* Display Enhancement A */  
   //U8X8_CA(0xc1, 0x9f),			/* contrast */  
