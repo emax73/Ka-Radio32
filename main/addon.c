@@ -20,6 +20,7 @@
 #include "interface.h"
 
 #include "addon.h"
+#include "custom.h"
 #include "u8g2_esp32_hal.h"
 #include "ucg_esp32_hal.h"
 #include <time.h>
@@ -131,12 +132,24 @@ void wakeLcd()
 	timerLcdOut = getLcdOut();
 	if((isColor) && (itLcdOut))  mTscreen = MTNEW;
 	itLcdOut = false;
+	
+	// add the gpio switch on here gpioLedBacklight can be directly a GPIO_NUM_xx or declared in gpio.h
+	LedBacklightOn();
+}
+
+void sleepLcd()
+{
+	// add the gpio switch off here
+	LedBacklightOff();
 }
 
 void lcd_init(uint8_t Type)
 {	
 	lcd_type = Type;
+	// init the gpio for backlight
+	LedBacklightInit();
 	if (lcd_type == LCD_NONE) return;
+	
 	if (lcd_type & LCD_COLOR) // Color one
 	{
 		lcd_initUcg(&lcd_type);
@@ -807,6 +820,7 @@ void task_addon(void *pvParams)
 		if (itLcdOut) // switch off the lcd
 		{
 			isColor?ucg_ClearScreen(&ucg):u8g2_ClearDisplay(&u8g2);
+			sleepLcd();
 		}
 		
 		if (timerScreen >= 2) // 2 sec timeout 
