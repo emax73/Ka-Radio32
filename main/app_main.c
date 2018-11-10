@@ -318,8 +318,8 @@ uint32_t checkUart(uint32_t speed)
 *******************************************************************************/
 static void init_hardware()
 {
-	VS1053_HW_init(); // init spi
-	VS1053_Start();
+	if (VS1053_HW_init()) // init spi
+		VS1053_Start();
 	
     //Initialize the SPI RAM chip communications and see if it actually retains some bytes. If it
     //doesn't, warn user.
@@ -820,7 +820,7 @@ void app_main()
 	//time display
 	setDdmm((device->options32)&T_DDMM);
 	//SPI init for the vs1053 and lcd if spi.
-	VS1053_spi_init(KSPI);
+	VS1053_spi_init();
 
     init_hardware(); 
 	ESP_LOGI(TAG, "Hardware init done...");
@@ -972,7 +972,7 @@ void app_main()
 	xTaskCreatePinnedToCore(serversTask, "serversTask", 3000, NULL, 3, &pxCreatedTask,0); 
 	ESP_LOGI(TAG, "%s task: %x","serversTask",(unsigned int)pxCreatedTask);	
 	
-	xTaskCreatePinnedToCore (task_addon, "task_addon", 2600, NULL, 10, &pxCreatedTask,1);  //high priority for the spi else too slow due to ucglib
+	xTaskCreatePinnedToCore (task_addon, "task_addon", 2600, NULL, 4, &pxCreatedTask,1);  //high priority for the spi else too slow due to ucglib
 	ESP_LOGI(TAG, "%s task: %x","task_addon",(unsigned int)pxCreatedTask);
 		
 /*	if (RDA5807M_detection())
