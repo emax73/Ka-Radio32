@@ -17,10 +17,9 @@
 
 #include "driver/gpio.h"
 // ---Button defaults-------------------------------------------------------------
-
-#define BTN_DOUBLECLICKTIME  400  // second click within 400ms
+#define ENC_BUTTONINTERVAL    10  // check enc->button every x milliseconds, also debouce time
+#define BTN_DOUBLECLICKTIME  600  // second click within 400ms
 #define BTN_HOLDTIME        1000  // report held button after 1s
-
 
 // ----------------------------------------------------------------------------
 
@@ -66,13 +65,33 @@ typedef gpio_mode_t pinMode_t;
     DoubleClicked   
   } Button;
 
-  void ClickEncoderInit(int8_t A, int8_t B, int8_t BTN );
-  void (*serviceEncoder)();
-  void service(void); 
-  int16_t getValue(void);
-  Button getButton(void);
-  bool getPinState();
-  bool getpinsActive();
+  typedef struct {
+ int8_t pinA;
+  int8_t pinB;
+  int8_t pinBTN;
+  bool pinsActive;
+  volatile int16_t delta;
+  volatile int16_t last;
+  volatile uint8_t steps;
+  volatile uint16_t acceleration;
+  bool accelerationEnabled;
+  volatile Button button;
+  bool doubleClickEnabled;
+  bool buttonHeldEnabled;
+  bool buttonOnPinZeroEnabled ;
+  uint16_t keyDownTicks ;
+  uint16_t doubleClickTicks ;
+  unsigned long lastButtonCheck ;
+  } Encoder_t;	  
+  
+  
+  Encoder_t* ClickEncoderInit(int8_t A, int8_t B, int8_t BTN );
+  
+  void service(Encoder_t *enc); 
+  int16_t getValue(Encoder_t *enc);
+  Button getButton(Encoder_t *enc);
+  bool getPinState(Encoder_t *enc);
+  bool getpinsActive(Encoder_t *enc);
   
 
 
