@@ -633,85 +633,143 @@ event_ir_t evt;
 		
 		switch(evtir)
 		{
+		case 0xFF0047: 
+		case 0xFF0040: 
 		case 0xDF2047:
 		case 0xDF2002:
-		case 0xFF0046: 
-		case 0xF70812:  /*(" UP");*/  changeStation(+1);  
+		//case 0xFF0046: 
+		case 0xF70812:  /*(" FORWARD");*/  changeStation(+1);  
 		break;
+		case 0xFF0007:
 		case 0xDF2049:
 		case 0xDF2041:
-		case 0xFF0044:
+		//case 0xFF0044:
 		case 0xF70842:
 		case 0xF70815: /*(" LEFT");*/  setRelVolume(-5);  
 		break;
+		case 0xFF0046:
+		case 0xFF0043:
 		case 0xDF204A:
-		case 0xFF0040:
-		case 0xF7081E: /*(" OK");*/ if (!evt.repeat_flag ) stationOk();     
+		//case 0xFF0040:
+		case 0xF7081E: /*(" -OK-");*/ stationOk();     
 		break;
+		case 0xFF0015:
 		case 0xDF204B:
 		case 0xDF2003:
-		case 0xFF0043:
+		//case 0xFF0043:
 		case 0xF70841:
 		case 0xF70814: /*(" RIGHT");*/ setRelVolume(+5);     
-		break; 
+		break; // volume +
+		case 0xFF0045:
+		case 0xFF0044:
 		case 0xDF204D:
 		case 0xDF2009:
-		case 0xFF0015:
-		case 0xF70813: /*(" DOWN");*/ changeStation(-1);
+		//case 0xFF0015:
+		case 0xF70813: /*(" REVERSE");*/ changeStation(-1);
 		break;
-		case 0xDF2000:
-		case 0xFF0016:
-		case 0xF70801: /*(" 1");*/ if (!evt.repeat_flag ) nbStation('1');   
-		break;
-		case 0xDF2010:
-		case 0xFF0019:
-		case 0xF70802: /*(" 2");*/ if (!evt.repeat_flag ) nbStation('2');   
-		break;
-		case 0xDF2011:
-		case 0xFF000D:
-		case 0xF70803: /*(" 3");*/ if (!evt.repeat_flag ) nbStation('3');   
-		break;
-		case 0xDF2013:
 		case 0xFF000C:
-		case 0xF70804: /*(" 4");*/ if (!evt.repeat_flag ) nbStation('4');   
+		case 0xDF2000:
+		//case 0xFF0016:
+		case 0xF70801: /*(" 1");*/ nbStation('1');   
 		break;
-		case 0xDF2014:
 		case 0xFF0018:
-		case 0xF70805: /*(" 5");*/ if (!evt.repeat_flag ) nbStation('5');   
+		case 0xDF2010:
+		//case 0xFF0019:
+		case 0xF70802: /*(" 2");*/ nbStation('2');   
 		break;
-		case 0xDF2015:
 		case 0xFF005E:
-		case 0xF70806: /*(" 6");*/ if (!evt.repeat_flag ) nbStation('6');   
+		case 0xDF2011:
+		//case 0xFF000D:
+		case 0xF70803: /*(" 3");*/ nbStation('3');   
 		break;
-		case 0xDF2017:
 		case 0xFF0008:
-		case 0xF70807: /*(" 7");*/ if (!evt.repeat_flag ) nbStation('7');   
+		case 0xDF2013:
+		//case 0xFF000C:
+		case 0xF70804: /*(" 4");*/ nbStation('4');   
 		break;
-		case 0xDF2018:
 		case 0xFF001C:
-		case 0xF70808: /*(" 8");*/ if (!evt.repeat_flag ) nbStation('8');   
+		case 0xDF2014:
+		//case 0xFF0018:
+		case 0xF70805: /*(" 5");*/ nbStation('5');   
 		break;
-		case 0xDF2019:
 		case 0xFF005A:
-		case 0xF70809: /*(" 9");*/ if (!evt.repeat_flag ) nbStation('9');   
+		case 0xDF2015:
+		//case 0xFF005E:
+		case 0xF70806: /*(" 6");*/ nbStation('6');   
 		break;
-		case 0xDF2045:
 		case 0xFF0042:
-		case 0xF70817: /*(" *");*/   if (!evt.repeat_flag ) playStationInt(futurNum);   
+		case 0xDF2017:
+		//case 0xFF0008:
+		case 0xF70807: /*(" 7");*/ nbStation('7');   
 		break;
-		case 0xDF201B:
 		case 0xFF0052:
-		case 0xF70800: /*(" 0");*/ if (!evt.repeat_flag ) nbStation('0');   
+		case 0xDF2018:
+		//case 0xFF001C:
+		case 0xF70808: /*(" 8");*/ nbStation('8');   
 		break;
-		case 0xDF205B:
 		case 0xFF004A:
-		case 0xF7081D: /*(" #");*/ if (!evt.repeat_flag )  stopStation();    
+		case 0xDF2019:
+		//case 0xFF005A:
+		case 0xF70809: /*(" 9");*/ nbStation('9');   
 		break;
-		case 0xDF2007: /*(" Info")*/ if (!evt.repeat_flag ) toggletime();	
+		case 0xFF000D:
+		case 0xDF2045:
+		//case 0xFF0042:
+		case 0xF70817: /*(" *");*/   playStationInt(futurNum);   
+		break;
+		case 0xFF0016:
+		case 0xDF201B:
+		//case 0xFF0052:
+		case 0xF70800: /*(" 0");*/ nbStation('0');   
+		break;
+		case 0xFF0019:
+		case 0xDF205B:
+		//case 0xFF004A:
+		case 0xF7081D: /*(" #");*/  stopStation();    
+		break;
+		case 0xFF0009:
+		case 0xDF2007: /*(" Info")*/
+									toggletime();	
 		break;
 		default:;
 		/*SERIALX.println(F(" other button   "));*/
-		}// End Case			
+		}// End Case
+
+		if (evt.repeat_flag ) // repetition
+		switch(evtir)
+		{
+		case 0xFF0047:
+		case 0xFF0040:
+		case 0xDF2047:
+		case 0xDF2002:			
+		//case 0xFF0046: 
+		case 0xF70812:  /*(" FORWARD");*/  changeStation(+1); 
+		break;
+		case 0xFF0045:
+		case 0xFF0044:
+		case 0xDF204D:
+		case 0xDF2009:
+		//case 0xFF0015:
+		case 0xF70813:  /*(" REVERSE");*/ changeStation(-1); 
+		break;
+		case 0xFF0007:
+		case 0xDF2049:
+		case 0xDF2041:
+		//case 0xFF0044:
+		case 0xF70842:
+		case 0xF70815: /*(" LEFT");*/  setRelVolume(-5);  
+		break;
+		case 0xFF0015:
+		case 0xDF204B:
+		case 0xDF2003:
+		//case 0xFF0043:
+		case 0xF70841:
+		case 0xF70814: /*(" RIGHT");*/ setRelVolume(+5); 
+		break; // volume +
+		default:;
+		/*SERIALX.println(F(" other button   "));*/
+		}// End Case 	
+			
 	}
 }
  
