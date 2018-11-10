@@ -41,12 +41,12 @@
 
 // Encoder knob
 //-------------
-#define PIN_ENC0_A   GPIO_NUM_16		// 0 if encoder not used
-#define PIN_ENC0_B   GPIO_NUM_17		// DT
-#define PIN_ENC0_BTN GPIO_NUM_5		// SW
-#define PIN_ENC1_A   0		// 0 if encoder not used
-#define PIN_ENC1_B   0		// DT
-#define PIN_ENC1_BTN 0		// SW
+#define PIN_ENC0_A   GPIO_NUM_25		// 0 if encoder not used
+#define PIN_ENC0_B   GPIO_NUM_26		// DT
+#define PIN_ENC0_BTN 0				// SW
+#define PIN_ENC1_A   GPIO_NUM_16		// 0 if encoder not used
+#define PIN_ENC1_B   GPIO_NUM_17		// DT
+#define PIN_ENC1_BTN 0				// SW
 
 // I2C lcd (and rda5807 if lcd is i2c or LCD_NONE)
 //------------------------------------------------
@@ -69,8 +69,8 @@
 
 // I2S DAC or PDM output
 //-----------------------
-#define PIN_I2S_LRCK GPIO_NUM_25	// or Channel1
-#define PIN_I2S_BCLK GPIO_NUM_26	// or channel2
+#define PIN_I2S_LRCK 0			// or Channel1
+#define PIN_I2S_BCLK 0			// or channel2
 #define PIN_I2S_DATA GPIO_NUM_22	//  
 
 
