@@ -276,9 +276,8 @@ u8g2_SendBuffer(&u8g2);
 }
 
 
-//Thanks to Max
 void eraseSlashes(char * str) {
-	//Symbols: \" \' \\ \? \/
+	//Symbols: \" \' \\ \? \/ &amp;
 	char * sym = str, * sym1;
 	if (str != NULL) {
 		while (*sym != 0) {
@@ -288,12 +287,22 @@ void eraseSlashes(char * str) {
 					*sym = 0x1f; //Erase \ to non-printable symbol
 					sym++;
 				}	
-			} 
+			} else if (*sym == '&') {
+				if (sym[1] == 'a' && sym[2] == 'm' && sym[3] == 'p' && sym[4] == ';') {
+					sym++;
+					*sym = 0x1f;
+					sym++;
+					*sym = 0x1f;
+					sym++;
+					*sym = 0x1f;
+					sym++;
+					*sym = 0x1f;
+				}
+			}  
 			sym++;
 		}
 	} 	
 }
-//-Max
 
 
 ////////////////////////////////////////
@@ -334,7 +343,6 @@ void drawFrameU8g2(uint8_t mTscreen,struct tm *dt)
 		
 		if (lline[i] != NULL)
 		{
-			//Max
 			eraseSlashes(lline[i]);
 			if (i == 0) 
 			{      
