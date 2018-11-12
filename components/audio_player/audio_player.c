@@ -41,9 +41,7 @@ static int start_decoder_task(player_t *player)
 	{
 		task_func = vsTask;
         task_name = "vsTask";
-        //Max
-		//stack_depth = 3000;
-		stack_depth = 6000;
+        stack_depth = 3000;
 	} else
     switch (player->media_stream->content_type)
     {
