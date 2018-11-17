@@ -640,6 +640,7 @@ void encoderCompute(Encoder_t *enc,bool role)
 {	
 	Button newButton ;
 	int16_t newValue;
+	typeScreen state;
 
 	newValue = - getValue(enc);
 	newButton = getButton(enc);
@@ -660,14 +661,14 @@ void encoderCompute(Encoder_t *enc,bool role)
 	}	else
 		// no event on button switch
 	{
-		if ((stateScreen  != sstation)&&(newValue != 0))
+		if (role) state = sstation; else state = svolume;
+		if ((stateScreen  != state)&&(newValue != 0))
 		{    
-			role?setRelVolume(newValue):changeStation(newValue);
+			if(role) setRelVolume(newValue);else changeStation(newValue);
 		} 
-		if ((stateScreen  == sstation)&&(newValue != 0))
+		if ((stateScreen  == state)&&(newValue != 0))
 		{    
-//			currentValue += newValue;
-			role?changeStation(newValue):setRelVolume(newValue);	
+			if(role) changeStation(newValue); else setRelVolume(newValue);	
 		} 	
 	}		
 }
