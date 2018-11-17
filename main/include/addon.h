@@ -63,7 +63,7 @@ typedef struct {
 	bool repeat_flag;
 } event_ir_t;
 
-typedef  enum typelcmd {lstop,lplay,lmeta,licy0,licy4,lnameset,lvol,lovol,evol,estation} typelcmd;
+typedef  enum typelcmd {lstop,lplay,lmeta,licy0,licy4,lnameset,lvol,lovol,estation,eclrs,edraws,escroll,estatus} typelcmd;
 typedef struct {
     typelcmd lcmd;             /*!< For what ?*/
     char*  lline;              /*!< string of command */
@@ -79,6 +79,7 @@ extern u8g2_t u8g2;
 extern ucg_t ucg;
 void (*serviceEncoder)();
 void task_addon(void *pvParams);
+void task_lcd(void *pvParams);
 void lcd_init(uint8_t Type);
 void (*serviceAddon)();
 void addonParse(const char *fmt, ...);
