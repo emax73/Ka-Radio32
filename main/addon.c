@@ -40,6 +40,7 @@
 
 
 #define isColor (lcd_type&LCD_COLOR)
+const char *stopped = "STOPPED";	
 
 char irStr[4];
 xQueueHandle event_ir = NULL;
@@ -177,7 +178,7 @@ void lcd_init(uint8_t Type)
 }
 
 
-void lcd_state(char* State)
+void lcd_state(const char* State)
 {
 	if (lcd_type == LCD_NONE) return;
 	DrawColor(0,0,0,0);
@@ -189,10 +190,9 @@ void lcd_state(char* State)
 	if (!(isColor)) u8g2_SendBuffer(&u8g2);
 }
 
-void lcd_welcome(char* ip)
+void lcd_welcome(const char* ip)
 {
 	if (lcd_type == LCD_NONE) return;
-    char *url = "Stopped";// get_url(); // play_url();	
 	if (strlen(ip)==0) ClearBuffer();
     if (isColor) 
 		ucg_SetFont(&ucg,ucg_font_helvR14_tf );
@@ -206,7 +206,7 @@ void lcd_welcome(char* ip)
 	DrawColor(0,0,0,0);
 	DrawBox(2, 40, 128-30, 12);
 	DrawColor(1,255,255,255);
-	DrawString(2,40,url);
+	DrawString(2,40,stopped);
 	DrawString( DrawString(2,53,"IP")+18,53,ip);
 	if (!(isColor)) u8g2_SendBuffer(&u8g2);
 }
@@ -402,10 +402,12 @@ void startStation()
 }
 void startStop()
 {   
+	ESP_LOGD(TAG,"START/STOP State: %d",state);
     state?stopStation():startStation();
 }  
 void stationOk()
 {
+	ESP_LOGD(TAG,"STATION OK");
        if (strlen(irStr) >0)
 	   {	   
 		  futurNum = atoi(irStr);
@@ -476,7 +478,7 @@ static void evtScroll()
 	xQueueSend(event_lcd,&evt, 0);	
 }
 
-static void evtStatus(char* label)
+static void evtStatus(const char* label)
 {
 	event_lcd_t evt;
 	evt.lcmd = estatus;	
@@ -588,43 +590,40 @@ void adcLoop() {
  
  void buttonCompute(Button_t *enc,bool role)
 {	
-	int i;
-	Button state[3] ;
 	typeScreen stateS;
 	if (role) stateS = sstation; else stateS = svolume;	
-	for (i=0;i<3;i++)
+	
+	Button state0 = getButtons(enc,0);	
+	if (state0 != Open)
 	{
-		state[i] = getButtons(enc,i);
-	}
-			
-	if (state[0] != Open)
-	{
+		ESP_LOGD(TAG,"Button0: %i",state0);	
 		wakeLcd();
-
 		// clicked = startstop
-		if (state[0] == Clicked) startStop();
+		if (state0 == Clicked) startStop();
 		// double click = toggle time
-		if (state[0] == DoubleClicked) toggletime();	
-		if (state[0] == Held)
+		if (state0 == DoubleClicked) toggletime();	
+		if (state0 == Held)
 		{   
 			if (stateScreen != stateS) Screen(stateS);			
 		} 			
 	} else
 	{
+		Button state1 = getButtons(enc,1);
+		Button state2 = getButtons(enc,2);
 		if (stateScreen != stateS)
 		{    
-			if (state[1] != Open)
+			if (state1 != Open)
 			{	if (role) setRelVolume(5); 
 				else changeStation(1);}
-			if (state[2] != Open)
+			if (state2 != Open)
 			{	if (role) setRelVolume(-5); 
 				else changeStation(-1);}		
 		} 
 		if (stateScreen  == stateS)
 		{    
-			if (state[1] != Open)
+			if (state1 != Open)
 			{if (role) changeStation(1);else setRelVolume(5);}
-			if (state[2] != Open)
+			if (state2 != Open)
 			{if (role) changeStation(-1); else setRelVolume(-5);	}	
 		} 			
 	}
@@ -644,12 +643,8 @@ void buttonsLoop()
 
 void encoderCompute(Encoder_t *enc,bool role)
 {	
-	Button newButton ;
-	int16_t newValue;
-	typeScreen state;
-
-	newValue = - getValue(enc);
-	newButton = getButton(enc);
+	int16_t newValue = - getValue(enc);
+	Button newButton = getButton(enc);
    	// if an event on encoder switch	
 	if (newButton != Open)
 	{ 
@@ -667,6 +662,7 @@ void encoderCompute(Encoder_t *enc,bool role)
 	}	else
 		// no event on button switch
 	{
+		typeScreen state;
 		if (role) state = sstation; else state = svolume;
 		if ((stateScreen  != state)&&(newValue != 0))
 		{    
@@ -899,7 +895,7 @@ void task_lcd(void *pvParams)
 		if (event_lcd != NULL)
 		while (xQueueReceive(event_lcd, &evt, 0))
 		{ 
-			wakeLcd();	
+//			wakeLcd();	
 /*			if (evt.lcmd != lmeta)
 				ESP_LOGV(TAG,"event_lcd: %x",(int)evt.lcmd);
 			else
@@ -907,16 +903,19 @@ void task_lcd(void *pvParams)
 			switch(evt.lcmd)
 			{
 				case lmeta:
+					wakeLcd();	
 					isColor?metaUcg(evt.lline):metaU8g2(evt.lline);
 					break;
 				case licy4:
 					isColor?icy4Ucg(evt.lline):icy4U8g2(evt.lline);
 					break;
 				case licy0:
+					wakeLcd();	
 					isColor?icy0Ucg(evt.lline):icy0U8g2(evt.lline);
 					break;
 				case lstop:
-					isColor?statusUcg("STOPPED"):statusU8g2("STOPPED");
+					wakeLcd();	
+					isColor?statusUcg(stopped):statusU8g2(stopped);
 					if (stateScreen != smain)
 					{
 						mTscreen= MTNEW;
@@ -935,6 +934,7 @@ void task_lcd(void *pvParams)
 					isColor?playingUcg():playingU8g2();						  
 					break;
 				case lvol:
+					wakeLcd();	
 					// ignore it if the next is a lvol
 					if(xQueuePeek(event_lcd, &evt1, 0))
 						if (evt1.lcmd == lvol) break;
@@ -987,6 +987,7 @@ void task_addon(void *pvParams)
 	serviceEncoder = &multiService;	; // connect the 1ms interruption
 	serviceAddon = &ServiceAddon;	; // connect the 1ms interruption
 	futurNum = getCurrentStation();
+	
 	//ir
 	// queue for events of the IR nec rx
 	event_ir = xQueueCreate(5, sizeof(event_ir_t));
@@ -1000,6 +1001,8 @@ void task_addon(void *pvParams)
 	xTaskCreatePinnedToCore (task_lcd, "task_lcd", 2200, NULL, PRIO_LCD, &pxCreatedTask,CPU_LCD); 
 	ESP_LOGI(TAG, "%s task: %x","task_lcd",(unsigned int)pxCreatedTask);
 	vTaskDelay(1);	
+
+	if (!(isColor)) u8g2_SendBuffer(&u8g2);
 	wakeLcd();
 	
 	while (1)

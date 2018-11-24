@@ -53,7 +53,7 @@
 #define LCD_SPI_PCF8833			196 // 132x132
 #define LCD_SPI_SSD1331			197 // 96x64
 #define LCD_SPI_SEPS225			198 // 96x64
-
+#define LCD_SPI_ST7789V			199 // 240x320
 		
 
 typedef struct {
@@ -83,8 +83,8 @@ void task_lcd(void *pvParams);
 void lcd_init(uint8_t Type);
 void (*serviceAddon)();
 void addonParse(const char *fmt, ...);
-void lcd_state(char* State);
-void lcd_welcome(char* ip);
+void lcd_state(const char* State);
+void lcd_welcome(const char* ip);
 void setFuturNum(int16_t new);
 int16_t getFuturNum();
 void addonDt();

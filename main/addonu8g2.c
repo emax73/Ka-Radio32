@@ -485,7 +485,7 @@ void icy0U8g2(char* ici)
 }
 
 //cli.stopped or label
-void statusU8g2(char* label)
+void statusU8g2( const char* label)
 {
      cleartitleU8g2(3);
      strcpy(title,label);
