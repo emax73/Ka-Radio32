@@ -1,13 +1,14 @@
 ## STATE
-KaraDio32 in dev state : Release 1.5 R0 Stable
+Release 1.5 Stable
 
-Works on any esp32 board.
+Works on any esp32 board.  
+See the boards directory for a list of pre-configured boards.
 
 See the feature on https://hackaday.io/project/11570-wifi-webradio-with-esp8266-and-vs1053.  
-The esp32 adds the output on the internal dac or with i2s to an external dac but only mp3 stations can be played.  
+- The esp32 adds the output on the internal dac or with i2s to an external dac but only mp3 stations can be played.  
 Adding a vs1053 board, all stations can be played.  
 Compatible with esp8266 KaRadio addons.  
-Uart or telnet commands : http://karadio.karawin.fr/Interface.txt  
+- Serial or telnet commands : https://github.com/karawin/Ka-Radio32/blob/master/Interface.md
 
 ## Added features
 Work with i2s, internal DAC or a vs1053.  
@@ -36,7 +37,7 @@ Others features :
 ## Configure the hardware and IR codes
 If the default configuration doesn't fit your needs, you can externally configure the software to fit your hardware and peripherals to suit your needs.  
 The configuration file is to be flashed only one time. After that, the standard delivery will become compatible with your hardware gpio use and peripherals configuration. A future standard OTA will automatically works.  
-See : http://karadio.karawin.fr/HardwareConfig.txt  
+See : https://github.com/karawin/Ka-Radio32/blob/master/HardwareConfig.md
 
 ## Build your own
 To build your own release, you must install the idf https://github.com/espressif/esp-idf and the toolchain.
@@ -132,6 +133,47 @@ See the file main/include/gpio.h and main/include/addon.h
 // ADC for keyboard buttons
 #define PIN_ADC	GPIO_NONE	//GPIO_NUM_32 TO GPIO_NUM_39 or GPIO_NONE if not used.
 ```
+### LCD or oled declaration  
+You can configure the kind of display used in your configuration with the command  
+'sys.lcd("x")' with x:  
+  
+```
+#define LCD_NONE		255
+
+// Black&White
+//I2C
+#define LCD_I2C_SH1106		0 //128X64
+#define LCD_I2C_SSD1306		1 //128X64
+#define LCD_I2C_SSD1309		2 //128X64
+#define LCD_I2C_SSD1325 	3 //128X64
+#define LCD_I2C_SSD1306NN	4 //128X64
+#define LCD_I2C_SSD1309NN	5 //128X64
+#define LCD_I2C_SSD1306UN	6 //128x32
+
+//SPI
+#define LCD_SPI_SSD1306 		64 //128X32 (LCD_SPI =0x40)
+#define LCD_SPI_SSD1309 		65 //128X64
+#define LCD_SPI_ST7565_ZOLEN	66 //128X64
+#define LCD_SPI_SSD1322_NHD		67 //256X64
+#define LCD_SPI_IL3820_V2		68 //296X128
+#define LCD_SPI_SSD1607			69 //200X200
+#define LCD_SPI_LS013B7DH03		70 //128X128
+#define LCD_SPI_SSD1306NN 		71 //128X64
+#define LCD_SPI_SSD1309NN 		72 //128X64
+#define LCD_SPI_ST7920 			73 //128X64
+
+// Colors
+#define LCD_SPI_ST7735			192 // 128x160  (LCD_COLOR|LCD_SPI =0xC0)
+#define LCD_SPI_SSD1351			193 // 128x128
+#define LCD_SPI_ILI9341			194 // 240x320
+#define LCD_SPI_ILI9163			195 // 128x128
+#define LCD_SPI_PCF8833			196 // 132x132
+#define LCD_SPI_SSD1331			197 // 96x64
+#define LCD_SPI_SEPS225			198 // 96x64
+#define LCD_SPI_ST7789V			199 // 240x320
+#define LCD_SPI_ST7735S			200 // 128x128
+```
+  
 
 ## First use
 - If the acces point of your router is not known, the webradio inits itself as an AP. Connect the wifi of your computer to the ssid "WifiKaRadio",  
@@ -157,7 +199,7 @@ http://karadio.karawin.fr/karawin32Flash.jpg
 
 ![Screenshoot of download tool](https://raw.githubusercontent.com/karawin/Ka-Radio32/master/images/downloadtool32.jpg)
 
-The scheme from tomasf71 :  
+### The scheme from tomasf71 :  
 ![Scheme](https://raw.githubusercontent.com/karawin/Ka-Radio32/master/images/schemekaradio32.jpg)
 
 ## Audio output
