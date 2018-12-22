@@ -132,6 +132,10 @@ See the file main/include/gpio.h and main/include/addon.h
 
 // ADC for keyboard buttons
 #define PIN_ADC	GPIO_NONE	//GPIO_NUM_32 TO GPIO_NUM_39 or GPIO_NONE if not used.
+
+// LCD backlight control
+#define PIN_LCD_BACKLIGHT	GPIO_NONE // the gpio to be used in custom.c 
+
 ```
 ### LCD or oled declaration  
 You can configure the kind of display used in your configuration with the command  
@@ -172,6 +176,8 @@ You can configure the kind of display used in your configuration with the comman
 #define LCD_SPI_SEPS225			198 // 96x64
 #define LCD_SPI_ST7789V			199 // 240x320
 #define LCD_SPI_ST7735S			200 // 128x128
+#define LCD_SPI_ST7735L			201 // 80x160
+#define LCD_SPI_ST7735W			202 // 128x160 shifted 2+1
 ```
   
 
@@ -184,11 +190,7 @@ You can configure the kind of display used in your configuration with the comman
 - if the AP is already know by the esp32, the default ip is given by dhcp.
 - a sample of stations list is on http://karadio.karawin.fr/WebStations.txt . Can be uploaded via the web page.        
 
-To flash your KaRadio32 you will need these files:
-
-- http://karadio.karawin.fr/KaRadio32.bin
-- http://karadio.karawin.fr/KaRadio32sup.zip
-
+To flash your KaRadio32 without generating it,you will need the files in the binaries directory:
 
 The tool to use is here :  
 http://espressif.com/en/support/download/other-tools  

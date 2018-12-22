@@ -104,7 +104,7 @@ void start_network();
 static bool wifiInitDone = false;
 static EventGroupHandle_t wifi_event_group ;
 xQueueHandle event_queue;
-static wifi_mode_t mode;
+
 //xSemaphoreHandle print_mux;
 static uint16_t FlashOn = 5,FlashOff = 5;
 bool ledStatus = true; // true: normal blink, false: led on when playing
@@ -113,24 +113,21 @@ static output_mode_t audio_output_mode;
 static uint8_t clientIvol = 0;
 //ip
 static char localIp[20];
-
-
+// 4MB sram?
+static bool bigRam = false;
+// timeout to save volume in flash
+static uint32_t ctimeVol = 0;
 // disable 1MS timer interrupt
-void noInterrupt1Ms()
-{
-	timer_disable_intr(TIMERGROUP1MS, msTimer);
-}
+IRAM_ATTR void noInterrupt1Ms() {timer_disable_intr(TIMERGROUP1MS, msTimer);}
 // enable 1MS timer interrupt
-void interrupt1Ms()
-{
-	timer_enable_intr(TIMERGROUP1MS, msTimer);
-}
-void noInterrupts()
-{noInterrupt1Ms();}
+IRAM_ATTR void interrupt1Ms() {timer_enable_intr(TIMERGROUP1MS, msTimer);}
+IRAM_ATTR void noInterrupts() {noInterrupt1Ms();}
+IRAM_ATTR void interrupts() {interrupt1Ms();}
 
-void interrupts()
-{interrupt1Ms();}
-char* getIp() { return (localIp);}
+IRAM_ATTR char* getIp() {return (localIp);}
+IRAM_ATTR uint8_t getIvol() {return clientIvol;}
+IRAM_ATTR void setIvol( uint8_t vol) {clientIvol = vol;ctimeVol = 0;}
+IRAM_ATTR output_mode_t get_audio_output_mode() { return audio_output_mode;}
 
 /*
 IRAM_ATTR void   microsCallback(void *pArg) {
@@ -144,6 +141,8 @@ IRAM_ATTR void   microsCallback(void *pArg) {
 	xQueueSendFromISR(event_queue, &evt, NULL);	
 	TIMERG1.hw_timer[timer_idx].config.alarm_en = 1;
 }*/
+// 
+IRAM_ATTR bool bigSram() { return bigRam;}
 //-----------------------------------
 IRAM_ATTR void   msCallback(void *pArg) {
 	int timer_idx = (int) pArg;
@@ -256,23 +255,8 @@ timer_config_t config;
 	ESP_ERROR_CHECK(timer_start(TIMERGROUP1mS, microsTimer));*/
 }
 
-
-output_mode_t get_audio_output_mode() 
-{ return audio_output_mode;}
-
-
-
 //////////////////////////////////////////////////////////////////
 
-uint8_t getIvol()
-{
-	return clientIvol;
-}
-
-void setIvol( uint8_t vol)
-{
-	clientIvol = vol;
-}
 
 // Renderer config creation
 static renderer_config_t *create_renderer_config()
@@ -327,14 +311,17 @@ static void init_hardware()
 	
     //Initialize the SPI RAM chip communications and see if it actually retains some bytes. If it
     //doesn't, warn user.
+	if (bigRam)
+	{
+		setSPIRAMSIZE(420*1024);
+		ESP_LOGI(TAG, "\nSet Song buffer to 240k");
+	}
     if (!spiRamFifoInit()) {
         ESP_LOGE(TAG, "\nSPI RAM chip fail!");
         esp_restart();
     }
-
     ESP_LOGI(TAG, "hardware initialized");
 }
-
 
 
 /* event handler for pre-defined wifi events */
@@ -402,6 +389,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 static void start_wifi()
 {
     ESP_LOGI(TAG, "starting wifi");
+	wifi_mode_t mode;
 	struct device_settings *device;	
 	char ssid[32]; 
 	char pass[64];
@@ -453,8 +441,7 @@ static void start_wifi()
 				esp_wifi_set_mode(WIFI_MODE_AP) ;
 		}
 		
-		ESP_ERROR_CHECK(esp_wifi_get_mode(&mode))	
-			
+		ESP_ERROR_CHECK(esp_wifi_get_mode(&mode));				
 		if (mode == WIFI_MODE_AP)
 		{
 			wifi_config_t wifi_config = {
@@ -507,7 +494,7 @@ static void start_wifi()
 void start_network(){
 	struct device_settings *device;	
 	tcpip_adapter_ip_info_t info;
-	
+	wifi_mode_t mode;	
 	ip4_addr_t ipAddr;
 	ip4_addr_t mask;
 	ip4_addr_t gate;
@@ -540,7 +527,7 @@ void start_network(){
 	IPADDR2_COPY(&info.gw,&gate);
 	IPADDR2_COPY(&info.netmask,&mask);	
 	
-	
+	ESP_ERROR_CHECK(esp_wifi_get_mode(&mode));		
 	if (mode == WIFI_MODE_AP)
 	{
 			xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,false, true, 3000);
@@ -624,7 +611,7 @@ void start_network(){
 void timerTask(void* p) {
 	struct device_settings *device;	
 	uint32_t ctime = 0;
-	uint32_t ctimeVol = 0;
+	
 	uint32_t cCur;
 	bool stateLed = false;
 	gpio_num_t gpioLed;
@@ -698,6 +685,7 @@ void timerTask(void* p) {
 	vTaskDelay(1);		
 	}
 //	printf("t0 end\n");
+	free (device);
 	vTaskDelete( NULL ); // stop the task (never reached)
 }
 
@@ -779,6 +767,8 @@ void app_main()
     }
     ESP_ERROR_CHECK( err );
 	
+	// Check if we are in large Sram config
+	if (xPortGetFreeHeapSize() > 0x80000) bigRam = true;
 	//init hardware	
 	partitions_init();
 	ESP_LOGI(TAG, "Partition init done...");
@@ -884,7 +874,7 @@ void app_main()
 	// Version infos
 	ESP_LOGI(TAG, "Release %s, Revision %s",RELEASE,REVISION);
 	ESP_LOGI(TAG, "SDK %s",esp_get_idf_version());
-	ESP_LOGI(TAG, "Heap size: %d",xPortGetFreeHeapSize( ));
+	ESP_LOGI(TAG, "Heap size: %d",xPortGetFreeHeapSize());
 
 	lcd_welcome("");
 	
@@ -959,22 +949,23 @@ void app_main()
 	//start tasks of KaRadio32
 	xTaskCreatePinnedToCore(uartInterfaceTask, "uartInterfaceTask", 2400, NULL, PRIO_UART, &pxCreatedTask,CPU_UART); 
 	ESP_LOGI(TAG, "%s task: %x","uartInterfaceTask",(unsigned int)pxCreatedTask);
-	
+	vTaskDelay(1);
 	xTaskCreatePinnedToCore(clientTask, "clientTask", 3000, NULL, PRIO_CLIENT, &pxCreatedTask,CPU_CLIENT); 
 	ESP_LOGI(TAG, "%s task: %x","clientTask",(unsigned int)pxCreatedTask);	
-	
-    xTaskCreatePinnedToCore(serversTask, "serversTask", 3000, NULL, PRIO_SERVER, &pxCreatedTask,CPU_SERVER); 
+	vTaskDelay(1);
+    xTaskCreatePinnedToCore(serversTask, "serversTask", 3100, NULL, PRIO_SERVER, &pxCreatedTask,CPU_SERVER); 
 	ESP_LOGI(TAG, "%s task: %x","serversTask",(unsigned int)pxCreatedTask);	
-	
+	vTaskDelay(1);
 	xTaskCreatePinnedToCore (task_addon, "task_addon", 2200, NULL, PRIO_ADDON, &pxCreatedTask,CPU_ADDON);  
 	ESP_LOGI(TAG, "%s task: %x","task_addon",(unsigned int)pxCreatedTask);	
-	
+
 /*	if (RDA5807M_detection())
 	{
 		xTaskCreatePinnedToCore(rda5807Task, "rda5807Task", 2500, NULL, 3, &pxCreatedTask,1);  //
 		ESP_LOGI(TAG, "%s task: %x","rda5807Task",(unsigned int)pxCreatedTask);
 	}
 */	
+	vTaskDelay(10);
 	printf("Init ");
 	for (int i=0;i<10;i++)
 	{

@@ -1,6 +1,6 @@
 /******************************************************************************
  * 
- * Copyright 2017 karawin (http://www.karawin.fr)
+ * Copyright 2018 karawin (http://www.karawin.fr)
  *
 *******************************************************************************/
 
@@ -17,6 +17,7 @@
 #include "logo.h"
 #include "interface.h"
 #include "eeprom.h"
+#include "addoncommon.h"
 /*==========================================*/
 //#include "u8g2-karadio32_fonts.h"
 extern const uint8_t u8g2_font_4x6_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_4x6_t_latcyr");
@@ -41,43 +42,10 @@ extern const uint8_t u8g2_font_10x20_t_latcyr[] U8G2_FONT_SECTION("u8g2_font_10x
 #define VOLUME    5
 #define TIME      6
 
-#define BUFLEN  256
+#undef LINES
 #define LINES	5
 
-static uint16_t y ;		//Height of a line
-static uint16_t yy;		//Height of screen
-static uint16_t x ;		//Width
-static uint16_t z ;		// an internal offset for y
 
-//static struct tm *dt;
-static char strsec[30]; 
-static uint16_t volume;
-
-static char station[BUFLEN]; //received station
-static char title[BUFLEN];	// received title
-static char nameset[BUFLEN]; // the local name of the station
-
-static char* lline[LINES] ; // array of ptr of n lines 
-static uint8_t  iline[LINES] ; //array of index for scrolling
-static uint8_t  tline[LINES] ;
-static uint8_t  mline[LINES] ; // mark to display
-
-static char nameNum[5] ; // the number of the current station
-static char genre[BUFLEN/2]; // the local name of the station
-
-
-/*static uint8_t charset = false;
-
-////////////////////////////////////////
-uint8_t getCharset()
-{
-	return charset;
-}
-void setCharset(uint8_t cy)
-{
-	charset = cy;
-}
-*/
 ////////////////////////////////////////
 typedef enum sizefont  {small, text,middle,large} sizefont;
 void setfont8(sizefont size)
@@ -264,6 +232,11 @@ static void screenBottomU8g2()
 //TIME
 	if (yy != 32) // not enough room
 	{
+		char strsec[30]; 		
+		if (getDdmm())
+			sprintf(strsec,"%02d-%02d-%04d  %02d:%02d:%02d",dt->tm_mday,dt->tm_mon+1,dt->tm_year+1900, dt->tm_hour, dt->tm_min,dt->tm_sec);
+		else 
+			sprintf(strsec,"%02d-%02d-%04d  %02d:%02d:%02d",dt->tm_mon+1,dt->tm_mday,dt->tm_year+1900, dt->tm_hour, dt->tm_min,dt->tm_sec);	
 		setfont8(small);
 		u8g2_DrawUTF8(&u8g2,x/2-(u8g2_GetUTF8Width(&u8g2,strsec)/2),yy-y-3,strsec);  
 	}	
@@ -307,15 +280,10 @@ void eraseSlashes(char * str) {
 
 ////////////////////////////////////////
 // draw all lines
-void drawFrameU8g2(uint8_t mTscreen,struct tm *dt)
+void drawFrameU8g2(uint8_t mTscreen)
 {
-	u8g2_ClearBuffer(&u8g2);
-	if (getDdmm())
-		sprintf(strsec,"%02d-%02d-%04d  %02d:%02d:%02d",dt->tm_mday,dt->tm_mon+1,dt->tm_year+1900, dt->tm_hour, dt->tm_min,dt->tm_sec);
-	else 
-		sprintf(strsec,"%02d-%02d-%04d  %02d:%02d:%02d",dt->tm_mon+1,dt->tm_mday,dt->tm_year+1900, dt->tm_hour, dt->tm_min,dt->tm_sec);
-
-	
+	if (dt == NULL) {dt = getDt();}
+	u8g2_ClearBuffer(&u8g2);	
     setfont8(text);
     u8g2_SetDrawColor(&u8g2, 1);
     y = getFontLineSpacing();
@@ -366,14 +334,19 @@ void drawFrameU8g2(uint8_t mTscreen,struct tm *dt)
 //////////////////////////
 void drawTTitleU8g2(char* ttitle)
 { 
+  char strIp[23];
 	setfont8(middle);
     uint16_t xxx = (x/2)-(u8g2_GetUTF8Width(&u8g2,ttitle)/2);
     u8g2_SetDrawColor(&u8g2, 1);
     u8g2_DrawBox(&u8g2,0,0,x,getFontLineSpacing()+1); 
     u8g2_SetDrawColor(&u8g2, 0);
-    u8g2_DrawUTF8(&u8g2,xxx,1,ttitle);
-	
+    u8g2_DrawUTF8(&u8g2,xxx,1,ttitle);	
     u8g2_SetDrawColor(&u8g2, 1);
+	
+    // draw ip
+	setfont8(small);
+	sprintf(strIp,"IP: %s", getIp());
+	u8g2_DrawUTF8(&u8g2,(x/2)-(u8g2_GetUTF8Width(&u8g2,strIp)/2),yy-getFontLineSpacing(),strIp);   	
 }
 //////////////////////////
 void drawNumberU8g2(uint8_t mTscreen,char* irStr)
@@ -383,8 +356,7 @@ void drawNumberU8g2(uint8_t mTscreen,char* irStr)
   drawTTitleU8g2(ststr);   
   setfont8(large);
   uint16_t xxx = (x/2)-(u8g2_GetUTF8Width(&u8g2,irStr)/2); 
-  u8g2_DrawUTF8(&u8g2,xxx,yy/3, irStr);        
-  screenBottomU8g2();  
+  u8g2_DrawUTF8(&u8g2,xxx,yy/3, irStr);          
 }
 //////////////////////////
 void drawStationU8g2(uint8_t mTscreen,char* snum,char* ddot)
@@ -400,8 +372,7 @@ void drawStationU8g2(uint8_t mTscreen,char* snum,char* ddot)
         len = (x/2)-(u8g2_GetUTF8Width(&u8g2,ddot)/2);
         if (len <0) len = 0;
         u8g2_DrawUTF8(&u8g2,len,yy/3+4+y, ddot);
-  }
-  screenBottomU8g2(); 	
+  }	
 }
 
 
@@ -416,11 +387,10 @@ void drawVolumeU8g2(uint8_t mTscreen)
   drawTTitleU8g2(vlstr) ;  
   setfont8(large);  
   uint16_t xxx = (x/2)-(u8g2_GetUTF8Width(&u8g2,aVolume)/2);     
-  u8g2_DrawUTF8(&u8g2,xxx,yy/3,aVolume);
-  screenBottomU8g2(); 
+  u8g2_DrawUTF8(&u8g2,xxx,(yy/3)+6,aVolume);
 }
 
-void drawTimeU8g2(uint8_t mTscreen,struct tm *dt,unsigned timein)
+void drawTimeU8g2(uint8_t mTscreen,unsigned timein)
 {
   char strdate[23];
   char strtime[20];
@@ -433,12 +403,7 @@ void drawTimeU8g2(uint8_t mTscreen,struct tm *dt,unsigned timein)
     sprintf(strtime,"%02d:%02d:%02d", dt->tm_hour, dt->tm_min,dt->tm_sec);
     drawTTitleU8g2(strdate); 
     setfont8(large);	
-    u8g2_DrawUTF8(&u8g2,(x/2)-(u8g2_GetUTF8Width(&u8g2,strtime)/2),(yy/3)+4,strtime); 
-    // draw ip
-	setfont8(small);
-	sprintf(strdate,"IP: %s", getIp());
-	u8g2_DrawUTF8(&u8g2,(x/2)-(u8g2_GetUTF8Width(&u8g2,strdate)/2),yy-getFontLineSpacing(),strdate);   
-	
+    u8g2_DrawUTF8(&u8g2,(x/2)-(u8g2_GetUTF8Width(&u8g2,strtime)/2),(yy/3)+6,strtime); 
 }
 
 

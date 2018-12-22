@@ -66,7 +66,7 @@ typedef struct {
 	bool repeat_flag;
 } event_ir_t;
 
-typedef  enum typelcmd {lstop,lplay,lmeta,licy0,licy4,lnameset,lvol,lovol,estation,eclrs,edraws,escroll,estatus} typelcmd;
+typedef  enum typelcmd {lstop,lplay,lmeta,licy0,licy4,lnameset,lvol,lovol,estation,eclrs,edraw,etoggle} typelcmd;
 typedef struct {
     typelcmd lcmd;             /*!< For what ?*/
     char*  lline;              /*!< string of command */
@@ -76,11 +76,13 @@ typedef struct {
 #define MTNEW		1
 #define MTREFRESH	2
 
+#define VCTRL	true
+#define SCTRL	false
 
 extern xQueueHandle event_ir;
 extern u8g2_t u8g2;
 extern ucg_t ucg;
-void (*serviceEncoder)();
+//IRAM_ATTR  void (*serviceEncoder)();
 void task_addon(void *pvParams);
 void task_lcd(void *pvParams);
 void lcd_init(uint8_t Type);
@@ -93,5 +95,6 @@ int16_t getFuturNum();
 void addonDt();
 void wakeLcd();
 void* getEncoder(int num);
+struct tm* getDt();
 
 #endif

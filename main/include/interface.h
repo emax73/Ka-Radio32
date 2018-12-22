@@ -1,6 +1,6 @@
 /******************************************************************************
  * 
- * Copyright 2017 karawin (http://www.karawin.fr)
+ * Copyright 2018 karawin (http://www.karawin.fr)
  *
 *******************************************************************************/
 #ifndef INTERFACE_H
@@ -16,8 +16,8 @@
 #define MAXDATAT	 256
 
 
-#define RELEASE "1.5"
-#define REVISION "3"
+#define RELEASE "1.6"
+#define REVISION "00"
 
 uint32_t checkUart(uint32_t speed);
 extern unsigned short adcdiv;	

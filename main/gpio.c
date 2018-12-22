@@ -10,6 +10,7 @@
 #include "gpio.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
+#include "app_main.h"
 
 #define hardware "hardware"
 
@@ -130,9 +131,17 @@ void gpio_get_encoder0(gpio_num_t *enca, gpio_num_t *encb, gpio_num_t *encbtn)
 	esp_err_t err;
 	nvs_handle hardware_handle;
 	// init default
-	*enca = PIN_ENC0_A;
-	*encb= PIN_ENC0_B;
-	*encbtn= PIN_ENC0_BTN;
+	if (bigSram()) // default is not compatible (gpio 16 & 17)
+	{
+		*enca = GPIO_NONE;
+		*encb= GPIO_NONE;
+		*encbtn= GPIO_NONE;	
+	} else
+	{
+		*enca = PIN_ENC0_A;
+		*encb= PIN_ENC0_B;
+		*encbtn= PIN_ENC0_BTN;
+	}
 	
 	if (open_partition(hardware, "gpio_space",&hardware_handle)!= ESP_OK) return;
 	
@@ -148,9 +157,17 @@ void gpio_get_encoder1(gpio_num_t *enca, gpio_num_t *encb, gpio_num_t *encbtn)
 	esp_err_t err;
 	nvs_handle hardware_handle;
 	// init default
-	*enca = PIN_ENC1_A;
-	*encb= PIN_ENC1_B;
-	*encbtn= PIN_ENC1_BTN;
+	if (bigSram())
+	{
+		*enca = GPIO_NONE;
+		*encb= GPIO_NONE;
+		*encbtn= GPIO_NONE;	
+	} else
+	{
+		*enca = PIN_ENC1_A;
+		*encb= PIN_ENC1_B;
+		*encbtn= PIN_ENC1_BTN;
+	}
 	
 	if (open_partition(hardware, "gpio_space",&hardware_handle)!= ESP_OK) return;
 	
@@ -248,6 +265,22 @@ void gpio_get_i2s(gpio_num_t *lrck ,gpio_num_t *bclk ,gpio_num_t *i2sdata )
 
 	close_partition(hardware_handle,hardware);	
 }
+
+void gpio_get_lcd_backlightl(gpio_num_t *lcdb)
+{
+	esp_err_t err;
+	nvs_handle hardware_handle;
+	// init default
+	*lcdb = PIN_LCD_BACKLIGHT;
+	
+	if (open_partition(hardware, "gpio_space",&hardware_handle)!= ESP_OK) return;
+	
+	err = nvs_get_u8(hardware_handle, "P_BACKLIGHT",(uint8_t *) lcdb);
+	if (err != ESP_OK) printf("gpio_get_lcd_backlightl error %d\n",err);
+
+	close_partition(hardware_handle,hardware);		
+}
+
 
 
 void gpio_get_ir_key(nvs_handle handle,const char *key, int32_t *out_value1 , int32_t *out_value2)

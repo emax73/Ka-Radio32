@@ -1,6 +1,6 @@
 /******************************************************************************
  * 
- * Copyright 2017 karawin (http://www.karawin.fr)
+ * Copyright 2018 karawin (http://www.karawin.fr)
  *
 *******************************************************************************/
 
@@ -33,10 +33,10 @@
 
 #include "esp_wifi.h"
 
-char parslashquote[] = {"(\""};
-char parquoteslash[] = {"\")"};
-char msgsys[] = {"##SYS."};
-char msgcli[] = {"##CLI."};
+const char parslashquote[] = {"(\""};
+const char parquoteslash[] = {"\")"};
+const char msgsys[] = {"##SYS."};
+const char msgcli[] = {"##CLI."};
 
 const char stritWIFISTATUS[]  = {"#WIFI.STATUS#\nIP: %d.%d.%d.%d\nMask: %d.%d.%d.%d\nGateway: %d.%d.%d.%d\n##WIFI.STATUS#\n"};
 const char stritWIFISTATION[]  = {"#WIFI.STATION#\nSSID: %s\nPASSWORD: %s\n##WIFI.STATION#\n"};
@@ -142,7 +142,7 @@ A command error display:\n\
 }; 
 
 uint16_t currentStation = 0;
-static uint8_t led_gpio = 255;
+static uint8_t led_gpio = GPIO_NONE;
 static IRAM_ATTR uint32_t lcd_out = 0xFFFFFFFF;
 static esp_log_level_t s_log_default_level = CONFIG_LOG_BOOTLOADER_LEVEL;
 extern void wsVol(char* vol);
@@ -737,18 +737,19 @@ void sysledgpio(char* s)
 uint8_t getLedGpio()
 {
 	struct device_settings *device;
-	if (led_gpio == 255)
+	if (led_gpio == GPIO_NONE)
 	{
 		device = getDeviceSettings();
-		uint8_t ledgpio = device->led_gpio;
-		if (ledgpio == 0) {
-			ledgpio = GPIO_LED;
-			device->led_gpio = ledgpio;
-			led_gpio = ledgpio;
-			saveDeviceSettings(device);
-		}
-		free (device);
-		return ledgpio;	
+		if (device != NULL)
+		{
+			led_gpio = device->led_gpio;
+			if (led_gpio == 0) {
+				led_gpio = GPIO_LED;
+				device->led_gpio = led_gpio;
+				saveDeviceSettings(device);
+			}
+			free (device);
+		} 
 	} 
 	return led_gpio;	
 }
@@ -914,8 +915,7 @@ void sysrotat(char* s)
 void syslcdout(char* s)
 {
     char *t = strstr(s, parslashquote);
-	struct device_settings *device;
-	device = getDeviceSettings();
+	struct device_settings *device = getDeviceSettings();
 	kprintf("##LCD out is ");
 	lcd_out = device->lcd_out; 
 	if(t == NULL)
@@ -942,11 +942,10 @@ void syslcdout(char* s)
 }
 uint32_t getLcdOut()
 {
-	struct device_settings *device;
 	int increm = 0;
 	if (lcd_out == 0xFFFFFFFF)
 	{
-		device = getDeviceSettings();
+		struct device_settings *device = getDeviceSettings();
 		lcd_out = device->lcd_out;
 		free (device);
 	} 

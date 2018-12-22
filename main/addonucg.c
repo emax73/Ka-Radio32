@@ -1,6 +1,6 @@
 /******************************************************************************
  * 
- * Copyright 2017 karawin (http://www.karawin.fr)
+ * Copyright 2018 karawin (http://www.karawin.fr)
  *
 *******************************************************************************/
 
@@ -19,7 +19,7 @@
 #include "logo.h"
 #include "interface.h"
 #include "eeprom.h"
-
+#include "addoncommon.h"
 #define TAG  "addonucg"
 
 extern const ucg_fntpgm_uint8_t ucg_font_crox1c[] UCG_FONT_SECTION("ucg_font_crox1c");
@@ -82,30 +82,11 @@ extern const ucg_fntpgm_uint8_t ucg_font_helvR18_gr[] UCG_FONT_SECTION("ucg_font
 #define VOLUME    7
 #define TIME      8
 
-#define BUFLEN  256
-#define LINES	9
 
-static uint16_t y ;		//Height of a line
-static uint16_t yy;		//Height of screen
-static uint16_t x ;		//Width
-static uint16_t z ;		// an internal offset for y
+
+
+
 static uint16_t HHeader= 40;
-
-//static struct tm *dt;
-static char strsec[30]; 
-static uint16_t volume;
-
-static char station[BUFLEN]; //received station
-static char title[BUFLEN];	// received title
-static char nameset[BUFLEN]; // the local name of the station
-
-static char* lline[LINES] ; // array of ptr of n lines 
-static uint8_t  iline[LINES] ; //array of index for scrolling
-static uint8_t  tline[LINES] ;
-static uint8_t  mline[LINES] ; // mark to display
-
-static char nameNum[5] ; // the number of the current station
-static char genre[BUFLEN/2]; // the local name of the station
 
 static char TTitleStr[15];
 static char TTimeStr[15];
@@ -200,7 +181,8 @@ void setfont(sizefont size)
 								case Cyrillic: ucg_SetFont(&ucg,ucg_font_crox5h );break; 
 								case Greek:ucg_SetFont(&ucg,ucg_font_helvR18_gr );break;
 								default:
-								case Latin:ucg_SetFont(&ucg,ucg_font_inr33_mf );break;
+								//case Latin:ucg_SetFont(&ucg,ucg_font_inr33_mf );break;
+								case Latin:ucg_SetFont(&ucg,ucg_font_inb19_tf );break;
 							}
 //			charset?ucg_SetFont(&ucg,ucg_font_crox5h ):ucg_SetFont(&ucg,ucg_font_inr33_mf);
 			break;
@@ -483,7 +465,7 @@ void setColor(int i)
 void draw(int i)
 {
 	uint16_t len,xpos,yyy; 
-	
+
     if ( mline[i]) mline[i] =0;
     if (i >=3) z = y/2 ; else z = 0;
     switch (i) {
@@ -524,6 +506,11 @@ void draw(int i)
  		if ((yy > 80)||(lline[TITLE21] == NULL)||(strlen(lline[TITLE21]) ==0))
 		{
 		  setfont(small);
+		  char strsec[30]; 	
+		  if (getDdmm())
+			sprintf(strsec,"%02d-%02d  %02d:%02d:%02d",dt->tm_mday,dt->tm_mon+1,dt->tm_hour, dt->tm_min,dt->tm_sec);
+		  else
+			sprintf(strsec,"%02d-%02d  %02d:%02d:%02d",dt->tm_mon+1,dt->tm_mday,dt->tm_hour, dt->tm_min,dt->tm_sec);		  
           len = ucg_GetStrWidth(&ucg,strsec);
           ucg_SetColori(&ucg,250,250,255); 
           ucg_SetColor(&ucg,1,CBLACK); 
@@ -567,10 +554,11 @@ void drawLinesUcg()
 
 ////////////////////////////////////////
 // draw all
-void drawFrameUcg(uint8_t mTscreen,struct tm *dt)
+void drawFrameUcg(uint8_t mTscreen)
 {
 //printf("drawFrameUcg, mTscreen: %d\n",mTscreen);
 int i;
+	if (dt == NULL) {dt = getDt();}
     switch (mTscreen){
     case 1: 
 		ucg_ClearScreen(&ucg);
@@ -584,10 +572,6 @@ int i;
 		for (i=0;i<LINES;i++) draw(i);
 		// no break
 	case 2:	
-		if (getDdmm())
-			sprintf(strsec,"%02d-%02d  %02d:%02d:%02d",dt->tm_mday,dt->tm_mon+1,dt->tm_hour, dt->tm_min,dt->tm_sec);
-		else
-			sprintf(strsec,"%02d-%02d  %02d:%02d:%02d",dt->tm_mon+1,dt->tm_mday,dt->tm_hour, dt->tm_min,dt->tm_sec);
 		markDrawUcg(TIME);
 		drawLinesUcg();
 		break;
@@ -643,6 +627,8 @@ void drawStationUcg(uint8_t mTscreen,char* snum,char* ddot)
   char ststr[] = {"Station"};
   int16_t len;
   LANG scharset;
+  	scharset = charset;
+	charset = Latin;
     switch (mTscreen){
       case 1:  
 		TTitleStr[0] = 0;        
@@ -651,23 +637,23 @@ void drawStationUcg(uint8_t mTscreen,char* snum,char* ddot)
       case 2:   
         ucg_SetColor(&ucg,0,CBLACK); 
         ucg_DrawBox(&ucg,0,HHeader,x,yy);     
-        setfont(middle);
+ //       setfont(middle);
         ucg_SetColor(&ucg,0,CBODY);
 //        ddot = strstr(sline,":");
         if (ddot != NULL)
         {
-		  scharset = charset;
-		  charset = Latin;
+
 		  removeUtf8(ddot);
+		  setfont(middle);
           ucg_DrawString(&ucg,(x/2)-(ucg_GetStrWidth(&ucg,snum)/2),yy/3,0,snum);
           len = (x/2)-(ucg_GetStrWidth(&ucg,ddot)/2);
           if (len <0) len = 0;
           ucg_DrawString(&ucg,len,yy/3 + ucg_GetFontAscent(&ucg)+y,0, ddot);
-		  charset = scharset;
         }
         break;
       default:; 
     } 	
+	charset = scharset;
 
 //  screenBottomUcg(); 	
 }
@@ -707,7 +693,7 @@ void drawVolumeUcg(uint8_t mTscreen)
 //  screenBottomUcg(); 
 }
 
-static  void drawSecond(struct tm *dt,unsigned timein)
+static  void drawSecond(unsigned timein)
 {
   static unsigned insec;
   if (insec != timein)
@@ -727,7 +713,7 @@ static  void drawSecond(struct tm *dt,unsigned timein)
   }    
 }
 
-void drawTimeUcg(uint8_t mTscreen,struct tm *dt,unsigned timein)
+void drawTimeUcg(uint8_t mTscreen,unsigned timein)
 {
   char strdate[23];
   char strtime[20];
@@ -765,7 +751,7 @@ void drawTimeUcg(uint8_t mTscreen,struct tm *dt,unsigned timein)
 		break;
       default:;
     }
-	drawSecond(dt,timein);;     	
+	drawSecond(timein);;     	
 }
 
 
@@ -903,7 +889,7 @@ void lcd_initUcg(uint8_t *lcd_type)
 	gpio_num_t cs;
 	gpio_num_t a0;
 	gpio_num_t rstlcd;
-	
+	dt = getDt();
 	uint8_t rotat = getRotat();
 	ESP_LOGI(TAG,"lcd init  type: %d",*lcd_type);
 	if (*lcd_type == LCD_NONE) return;

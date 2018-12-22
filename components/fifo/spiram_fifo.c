@@ -35,23 +35,31 @@ static xSemaphoreHandle mux;
 static long fifoOvfCnt, fifoUdrCnt;
 
 //Low watermark where we restart the reader thread.
-#define FIFO_LOWMARK (32*1024)
+#define FIFO_LOWMARK (16*1024)
 
 #ifdef FAKE_SPI_BUFF
 //Re-define a bunch of things so we use the internal buffer
 #undef SPIRAMSIZE
 //allocate enough for about one mp3 frame
-#define SPIRAMSIZE (40*1024)
-
-static  char fakespiram[SPIRAMSIZE];
+//#define SPIRAMSIZE (42*1024)
+//static  char fakespiram[SPIRAMSIZE];
+static  char *fakespiram;
 #define spiRamInit() while(0)
 #define spiRamTest() 1
 #define spiRamWrite(pos, buf, n) memcpy(&fakespiram[pos], buf, n)
 #define spiRamRead(pos, buf, n) memcpy(buf, &fakespiram[pos], n)
 #endif
 
+static unsigned SPIRAMSIZE = (40*1024);
+
+void setSPIRAMSIZE(unsigned size)
+{
+	SPIRAMSIZE = size;
+}
+
 //Initialize the FIFO
 int spiRamFifoInit() {
+	fakespiram = malloc(SPIRAMSIZE);
 	fifoRpos=0;
 	fifoWpos=0;
 	fifoFill=0;
