@@ -8,7 +8,6 @@ html,body {
 }
 #MAIN {
 	width:100%;
-	height:120%;
 	overflow:hidden;
 	margin:0px
 }
@@ -26,6 +25,7 @@ html,body {
 	padding-top:20px;
 	padding-bottom:5px;
 	background-color:#39c;
+	background-image: radial-gradient( #39c,#033069);
 	color:#f0f0ff;
 	font-size:22px;
 	line-height:25px;
@@ -84,7 +84,6 @@ div.LEFT {
 .CONTENT {
 	width:92%;
 	position:relative;
-	top:100px;
 	overflow:hidden;
 	min-height:calc(100% - 70px);
 	margin-left:auto;
@@ -93,7 +92,7 @@ div.LEFT {
 	padding-left:10px;
 	padding-right:10px;
 	padding-top: 30px;
-	background-color: #f8f8f8;
+	background-color: #f4f4f4;
 	box-shadow: 10px 5px 10px 0 #333,-10px 6px 10px 0 #333
 }
 
@@ -102,7 +101,6 @@ div.LEFT {
 	color:#f8f8f8;
 	background-color:#39c;
 	padding:4px 4px;
-	width:98%
 }
 .CONTENT p {
 	font-size:15px;
@@ -183,6 +181,9 @@ div.LEFT {
 	position:relative;
 	text-align:left
 }
+
+ul#ordered li {float:none;text-align:left;}
+
 .tabs li {
 	float:left
 }
@@ -387,8 +388,8 @@ div.LEFT {
 	position:absolute;
 	top:53px;
 	left:0;
-	border-color:#185213;
-	border-top:solid 1px
+	border-color:#9cc199;
+//	border-top:solid 1px
 }
 .tabs [id^="tab"]:checked+label {
 	top:0;
@@ -406,7 +407,19 @@ table#stationsTable,table#stationsTable th,table#stationsTable td {
 	border-collapse:collapse;
 	width:100%;
 	overflow-x: hidden;
+	border-color:#185213;
 }
+
+table#stationsTable tr:nth-child(even)
+{
+	background-color: #f8f8f8;
+}
+
+table#stationsTable tr:nth-child(odd)
+{
+	background-color: #f0f0f0;
+}
+
 a.page {
 	font-size:18pt!important;
 	margin-right:10px

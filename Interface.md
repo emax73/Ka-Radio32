@@ -150,7 +150,7 @@ sys.uart("x")	: Change the baudrate of the uart on the next reset.
 sys.i2s			: Display the current I2S speed			
 sys.i2s("x")	: Change and record the I2S clock speed of the vs1053 GPIO5 MCLK for the i2s interface to external dac. 
 				: 0=48kHz, 1=96kHz, 2=192kHz, other equal 0
-sys.erase		: erase all recorded configuration and stations.
+sys.erase		: erase all recorded configuration and stations. Dangerous command.
 sys.heap		: show the ram heap size
 sys.update		: start an OTA (On The Air) update of the software
 sys.prerelease	: start an OTA of the prerelease for test purpose.
@@ -200,4 +200,5 @@ sys.rotat("x"): Change and display the lcd rotation option (reset needed). 0:no 
 sys.henc0 or sys.henc1: Display the current step setting for the encoder. Normal= 4 steps/notch, Half: 2 steps/notch
 sys.henc0("x") with x=0 Normal, x=1 Half
 sys.henc1("x") with x=0 Normal, x=1 Half
+sys.cali[brate]: start a touch screen calibration
 ```

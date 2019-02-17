@@ -5,6 +5,8 @@
 *******************************************************************************/
 #ifndef ADDONUCG_H_
 #define ADDONUCG_H_
+
+void setfont(int size);
 void playingUcg();
 void namesetUcg(char* ici);
 void statusUcg(const char* label);

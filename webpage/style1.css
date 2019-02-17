@@ -8,9 +8,8 @@ html,body {
 }
 #MAIN {
 	width:100%;
-	height:120%;
 	overflow:hidden;
-	margin:0
+	margin:0px
 }
 #HEADER{
 	z-index:10;
@@ -26,6 +25,7 @@ html,body {
 	padding-top:20px;
 	padding-bottom:5px;
 	background-color:#333333;
+	background-image: radial-gradient(#111111,#333333);
 	color:#f8f8f0;
 	font-size:22px;
 	line-height:25px;
@@ -84,7 +84,6 @@ div.LEFT {
 .CONTENT {
 	width:92%;
 	position:relative;
-	top:100px;
 	overflow:hidden;
 	min-height:calc(100% - 70px);
 	margin-left:auto;
@@ -93,16 +92,14 @@ div.LEFT {
 	padding-left:10px;
 	padding-right:10px;
 	padding-top:30px;
-	background-color:#222222;
+	background-color:#111111;
 	box-shadow: 0px 0px 9px 2px #1E1C1C;
-	/*box-shadow:10px 5px 10px 255 #333,-10px 6px 10px 0 #333*/
 }
 .CONTENT h1 {
 	font:18px "Trebuchet MS";
 	color:#f8f8f8;
 	background-color:#666145;
 	padding:4px 4px;
-	width:98%
 }
 .CONTENT p {
 	font-size:15px;
@@ -182,6 +179,9 @@ div.LEFT {
 	position:relative;
 	text-align:left
 }
+
+ul#ordered li {float:none;text-align:left;}
+
 .tabs li {
 	float:left
 }
@@ -405,7 +405,7 @@ border:1px solid #444;
 	top:53px;
 	left:0;
 	border-color:#185213;
-	border-top:solid 1px
+//	border-top:solid 1px
 }
 .tabs [id^="tab"]:checked+label {
 	top:0;
@@ -414,6 +414,7 @@ border:1px solid #444;
 	color:#EEE;
 	background:#918B69;
 	border-radius:5px
+	border-color:#9cc199;
 }
 .tabs [id^="tab"]:checked ~ [id^="tab-content"] {
 	display:block
@@ -423,7 +424,19 @@ table#stationsTable,table#stationsTable th,table#stationsTable td {
 	border-collapse:collapse;
 	width:100%;
 	overflow-x: hidden;
+	border-color:#6d6f6d;
 }
+
+table#stationsTable tr:nth-child(even)
+{
+	background-color: #151515;;
+}
+
+table#stationsTable tr:nth-child(odd)
+{
+	background-color: #0d0d0d;
+}
+
 a.page {
 	font-size:18pt!important;
 	margin-right:10px

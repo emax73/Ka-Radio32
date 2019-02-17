@@ -16,8 +16,8 @@
 #define MAXDATAT	 256
 
 
-#define RELEASE "1.6"
-#define REVISION "00"
+#define RELEASE "1.9"
+#define REVISION "0"
 
 uint32_t checkUart(uint32_t speed);
 extern unsigned short adcdiv;	
@@ -34,6 +34,7 @@ void clientVol(char *s);
 uint8_t getLedGpio();
 uint32_t getLcdOut();
 bool getAutoWifi(void);
+void setAutoWifi();
 void fmSeekUp();
 void fmSeekDown();
 void fmVol(char* tmp);
@@ -43,6 +44,7 @@ void setDdmm(uint8_t dm);
 uint8_t getDdmm();
 void setRotat(uint8_t dm);
 uint8_t getRotat();
+void setHostname(char* s);
 
 #define kprintf(fmt, ...) do {    \
         printf(fmt, ##__VA_ARGS__);   \

@@ -12,6 +12,7 @@
 
 #include "ClickEncoder.h"
 #include "ClickButtons.h"
+#include "ClickJoystick.h"
 #include "app_main.h"
 #include "gpio.h"
 #include "webclient.h"
@@ -28,6 +29,7 @@
 #include "eeprom.h"
 #include "addonu8g2.h"
 #include "addonucg.h"
+#include "xpt2046.h"
 
 #include "esp_adc_cal.h"
 
@@ -48,7 +50,7 @@ xQueueHandle event_lcd = NULL;
 u8g2_t u8g2; // a structure which will contain all the data for one display
 ucg_t  ucg;
 static uint8_t lcd_type;
-
+static xTaskHandle  pxTaskLcd;
 // list of screen
 typedef  enum typeScreen {smain,svolume,sstation,snumber,stime,snull} typeScreen ;
 static typeScreen stateScreen = snull;
@@ -84,17 +86,22 @@ typedef enum {KEY_UP,KEY_LEFT,KEY_OK,KEY_RIGHT,KEY_DOWN,
 		KEY_STAR,KEY_DIESE,KEY_INFO, KEY_MAX} customKey_t;
 		
 static uint32_t customKey[KEY_MAX][2]; 
+static bool isCustomKey = false;
 
 static bool isEncoder0 = true;
 static bool isEncoder1 = true;
 static bool isButton0 = true;
 static bool isButton1 = true;
+static bool isJoystick0 = true;
+static bool isJoystick1 = true;
 void Screen(typeScreen st); 
 static void evtDrawScreen();
 Encoder_t* encoder0 = NULL;
 Encoder_t* encoder1 = NULL;
 Button_t* button0 = NULL;
 Button_t* button1 = NULL;
+Joystick_t* joystick1 = NULL;
+Joystick_t* joystick0 = NULL;
 
 struct tm* getDt() { return dt;}
 
@@ -144,6 +151,13 @@ uint16_t GetWidth()
 
   return u8g2.width;
 }
+uint16_t GetHeight()
+{
+  if (isColor)
+	  return ucg_GetHeight(&ucg);
+
+  return u8g2.height;
+}
 
 void wakeLcd()
 {
@@ -185,40 +199,40 @@ void lcd_init(uint8_t Type)
 //	dt=localtime(&timestamp);
 }
 
-
-void lcd_state(const char* State)
+void in_welcome(const char* ip,const char*state,int y,char* Version)
 {
-	if (lcd_type == LCD_NONE) return;
+	DrawString(2,2*y,Version);
 	DrawColor(0,0,0,0);
-	DrawBox(2, 40, 128-30, 12);
+	DrawBox(2, 4*y, GetWidth()-2, y);
 	DrawColor(1,255,255,255);
-	if (isColor) ucg_SetFont( &ucg,ucg_font_6x10_tf);
-	else u8g2_SetFont( &u8g2,u8g2_font_6x10_tf);
-	DrawString(2,40,State);
-	if (!(isColor)) u8g2_SendBuffer(&u8g2);
-}
+	DrawString(2,4*y,state);
+	DrawString( DrawString(2,5*y,"IP:")+18,5*y,ip);	
+}		
 
-void lcd_welcome(const char* ip)
+void lcd_welcome(const char* ip,const char*state)
 {
 char Version[20];
-	if (lcd_type == LCD_NONE) return;
-	if (strlen(ip)==0) ClearBuffer();
-    if (isColor) 
-		ucg_SetFont(&ucg,ucg_font_helvR14_tf );
-	else  u8g2_SetFont(&u8g2,u8g2_font_helvR14_tf );
-	if (GetWidth() <=64)
-		DrawString(2,2,"KaRadio32");
-    else DrawString(10,2,"KaRadio32");
-	if (isColor) ucg_SetFont(&ucg,ucg_font_6x10_tf);
-	else u8g2_SetFont(&u8g2,u8g2_font_6x10_tf);
 	sprintf(Version,"Version %s R%s\n",RELEASE,REVISION);
-	DrawString(2,24,Version);
-	DrawColor(0,0,0,0);
-	DrawBox(2, 40, 128-30, 12);
-	DrawColor(1,255,255,255);
-	DrawString(2,40,stopped);
-	DrawString( DrawString(2,53,"IP")+18,53,ip);
-	if (!(isColor)) u8g2_SendBuffer(&u8g2);
+	if (lcd_type == LCD_NONE) return;
+	if ((strlen(ip)==0)&&(strlen(state)==0)) ClearBuffer();
+	if (isColor) 
+	{
+		setfont(2);
+		int y = - ucg_GetFontDescent(&ucg)+ ucg_GetFontAscent(&ucg) +3; //interline
+		DrawString(GetWidth()/4,2,"KaRadio32");	
+		setfont(1);
+		in_welcome(ip,state,y,Version);
+	} else
+	{
+		u8g2_FirstPage(&u8g2);
+		do {	
+			setfont8(2);
+			int y = (u8g2_GetAscent(&u8g2) - u8g2_GetDescent(&u8g2));
+			DrawString(GetWidth()/4,2,"KaRadio32");
+			setfont8(1);
+			in_welcome(ip,state,y,Version);
+		} while ( u8g2_NextPage(&u8g2) );	    	
+	}
 }
 
  // ----------------------------------------------------------------------------
@@ -372,8 +386,8 @@ void drawScreen()
 //  ESP_LOGW(TAG,"stateScreen: %d, mTscreen: %d",stateScreen,mTscreen);
   if ((mTscreen != MTNODISPLAY)&&(!itLcdOut))
   {
-  switch (stateScreen)
-  {
+	switch (stateScreen)
+	{
     case smain:  // 
      drawFrame();
       break;
@@ -392,9 +406,8 @@ void drawScreen()
     default: 
 	  Screen(smain); 
 	  drawFrame();	  
-  }
-  if (!(isColor)) u8g2_SendBuffer(&u8g2);
-  mTscreen = MTNODISPLAY;
+	}
+	mTscreen = MTNODISPLAY;
   }   
 }
 
@@ -500,16 +513,10 @@ static void toggletime()
 
 static adc1_channel_t  channel = GPIO_NONE;
 static bool inside = false;
-uint8_t gpioToChannel(uint8_t gpio)
-{
-	if (gpio == GPIO_NONE) return GPIO_NONE;
-	if (gpio >= 38) return (gpio-36);
-	else return (gpio-28);	
-}
+
 void adcInit()
 {
 	gpio_get_adc(&channel);	
-	channel = gpioToChannel(channel);
 	ESP_LOGD(TAG,"ADC Channel: %i",channel);
 	if (channel != GPIO_NONE)
 	{
@@ -527,9 +534,9 @@ void adcLoop() {
 	vTaskDelay(1);
 	voltage1 = (adc1_get_raw(channel)+adc1_get_raw(channel)+adc1_get_raw(channel)+adc1_get_raw(channel))/4;
 //	printf ("Volt0: %d, Volt1: %d\n",voltage0,voltage1);
-	voltage = (voltage0+voltage1)*110/(819);
+	voltage = (voltage0+voltage1)*105/(819);
+	if (voltage <  40) return; // no panel
 //	printf("Voltage: %d\n",voltage);
-	if (voltage <  20) return; // no panel
 
 	if (inside&&(voltage0 > 3700)) 
 	{
@@ -591,16 +598,37 @@ void adcLoop() {
 	}
 }
 
-
+//-----------------------
+ // Compute the Buttons
+ //----------------------
+ void joystickCompute(Joystick_t *enc,bool role)
+ {
+	int16_t newValue = 0;
+	{
+		Button state1 = getJoystick(enc,0);
+		Button state2 = getJoystick(enc,1);
+//		ESP_LOGD(TAG,"Button1: %i, Button2: %i",state1,state2);	
+		newValue=((state1!=Open)?5:0)+((state2!=Open)?-5:0); // sstation take + or - in any value
+		typeScreen estate;
+		if (role) estate = sstation; else estate = svolume;
+		if ((stateScreen  != estate)&&(newValue != 0))
+		{    
+			if(role) setRelVolume(newValue);else evtStation(-newValue);
+			ESP_LOGD(TAG,"Button1: %i, Button2: %i, value: %i",state1,state2,newValue);	
+		} 
+		if ((stateScreen  == estate)&&(newValue != 0))
+		{    
+			if(role) evtStation(-newValue); else setRelVolume(newValue);
+			ESP_LOGD(TAG,"Button1: %i, Button2: %i, value: %i",state1,state2,newValue);		
+		} 			
+	}	 
+ }
 
 //-----------------------
  // Compute the Buttons
  //----------------------
- 
  void buttonCompute(Button_t *enc,bool role)
 {	
-//	typeScreen stateS;
-//	if (role) stateS = sstation; else stateS = svolume;	
 	int16_t newValue = 0;
 	Button state0 = getButtons(enc,0);	
 	if (state0 != Open)
@@ -642,6 +670,8 @@ void buttonsLoop()
 // button1 = station control or volume when pushed
 	if (isButton0) buttonCompute(button0,VCTRL);
 	if (isButton1) buttonCompute(button1,SCTRL);
+	if (isJoystick0) joystickCompute(joystick0,VCTRL);
+	if (isJoystick1) joystickCompute(joystick1,SCTRL);
 }
 
 //-----------------------
@@ -651,7 +681,10 @@ void buttonsLoop()
 void encoderCompute(Encoder_t *enc,bool role)
 {	
 	int16_t newValue = - getValue(enc);
+	if (newValue != 0) ESP_LOGD(TAG,"encoder value: %d",newValue);
 	Button newButton = getButton(enc);
+	typeScreen estate;
+	if (role) estate = sstation; else estate = svolume;
    	// if an event on encoder switch	
 	if (newButton != Open)
 	{ 
@@ -665,22 +698,18 @@ void encoderCompute(Encoder_t *enc,bool role)
 		{   
 			timerScreen = 0; 
 			if (stateScreen!= (role?sstation:svolume))
-				role?evtStation(newValue):setRelVolume(newValue);				
+				role?evtStation(newValue):setRelVolume(newValue);
 		} 			
-	}	else
+	}	//else
 		// no event on button switch
 	{
-		typeScreen estate;
-		if (role) estate = sstation; else estate = svolume;
 		if ((stateScreen  != estate)&&(newValue != 0))
 		{    
 			if(role) setRelVolume(newValue);else evtStation(newValue);
-//			wakeLcd();
 		} 
 		if ((stateScreen  == estate)&&(newValue != 0))
 		{    
-			if(role) evtStation(newValue); else setRelVolume(newValue);
-//			wakeLcd();			
+			if(role) evtStation(newValue); else setRelVolume(newValue);			
 		} 	
 	}		
 }
@@ -747,8 +776,10 @@ event_ir_t evt;
 		uint32_t evtir = ((evt.addr)<<8)|(evt.cmd&0xFF);
 		ESP_LOGI(TAG,"IR event: Channel: %x, ADDR: %x, CMD: %x = %X, REPEAT: %d",evt.channel,evt.addr,evt.cmd, evtir,evt.repeat_flag );
 		
-		if (irCustom(evtir,evt.repeat_flag)) break;;
-		
+		if (isCustomKey){
+			if (irCustom(evtir,evt.repeat_flag)) break;
+		}
+		else{ // no predefined keys
 		switch(evtir)
 		{
 		case 0xDF2047:
@@ -829,36 +860,38 @@ event_ir_t evt;
 		break;
 		default:;
 		/*SERIALX.println(F(" other button   "));*/
-		}// End Case			
+		}// End Case
+		}		
 	}
 }
  
-
-void initButtonEncoder()
+void initButtonDevices()
 {
-	struct device_settings *device;
+//	struct device_settings *device;
 	gpio_num_t enca0;
 	gpio_num_t encb0;
 	gpio_num_t encbtn0;
 	gpio_num_t enca1;
 	gpio_num_t encb1;
 	gpio_num_t encbtn1;	
-	gpio_get_encoder0(&enca0, &encb0, &encbtn0);
-	gpio_get_encoder1(&enca1, &encb1, &encbtn1);
+	gpio_get_encoders(&enca0, &encb0, &encbtn0,&enca1, &encb1, &encbtn1);
 	if (enca1 == GPIO_NONE) isEncoder1 = false; //no encoder
 	if (enca0 == GPIO_NONE) isEncoder0 = false; //no encoder
-
-	device = getDeviceSettings();
-	if (isEncoder0)	encoder0 = ClickEncoderInit(enca0, encb0, encbtn0,((device->options32&T_ENC0)==0)?false:true );	
-	if (isEncoder1)	encoder1 = ClickEncoderInit(enca1, encb1, encbtn1,((device->options32&T_ENC1)==0)?false:true );	
-	free (device);
+	if (isEncoder0)	encoder0 = ClickEncoderInit(enca0, encb0, encbtn0,((g_device->options32&T_ENC0)==0)?false:true );	
+	if (isEncoder1)	encoder1 = ClickEncoderInit(enca1, encb1, encbtn1,((g_device->options32&T_ENC1)==0)?false:true );	
 	
-	gpio_get_button0(&enca0, &encb0, &encbtn0);
-	gpio_get_button1(&enca1, &encb1, &encbtn1);
+	gpio_get_buttons(&enca0, &encb0, &encbtn0,&enca1, &encb1, &encbtn1);
 	if (enca1 == GPIO_NONE) isButton1 = false; //no encoder
 	if (enca0 == GPIO_NONE) isButton0 = false; //no encoder	
 	if (isButton0)	button0 = ClickButtonsInit(enca0, encb0, encbtn0);	
 	if (isButton1)	button1 = ClickButtonsInit(enca1, encb1, encbtn1 );	
+	
+	gpio_get_joysticks(&enca0,&enca1);
+	if (enca0 == GPIO_NONE) isJoystick0 = false; //no encoder
+	if (enca1 == GPIO_NONE) isJoystick1 = false; //no encoder
+	if (isJoystick0)	joystick0 = ClickJoystickInit(enca0 );	
+	if (isJoystick1)	joystick1 = ClickJoystickInit(enca1);	
+	
 }
 
 
@@ -871,17 +904,52 @@ void customKeyInit()
 	const char *klab[] = {"K_UP","K_LEFT","K_OK","K_RIGHT","K_DOWN","K_0","K_1","K_2","K_3","K_4","K_5","K_6","K_7","K_8","K_9","K_STAR","K_DIESE","K_INFO"};
 	
 	memset(&customKey,0,sizeof(uint32_t)*2*KEY_MAX); // clear custom
-	if (open_partition(hardware, "custom_ir_space",&handle)!= ESP_OK) return;
+	if (open_partition(hardware, "custom_ir_space",NVS_READONLY,&handle)!= ESP_OK) return;
 		
 	for (index = KEY_UP; index < KEY_MAX;index++)
 	{
 		// get the key in the nvs
-		gpio_get_ir_key(handle,klab[index],(int*)&(customKey[index][0]),(int*)&(customKey[index][1]));
+		isCustomKey |= gpio_get_ir_key(handle,klab[index],(uint32_t*)&(customKey[index][0]),(uint32_t*)&(customKey[index][1]));
+		ESP_LOGV(TAG," isCustomKey is %d for %d",isCustomKey,index);
 		taskYIELD();
 	}
-	
 	close_partition(handle,hardware);	
 }
+
+// touch loop
+
+void touchLoop()
+{
+int tx,ty;
+	if (haveTouch())
+	{
+		if ( xpt_read_touch(&tx, &ty, 0)) {
+			ESP_LOGD(TAG,"tx: %d, ty: %d",tx,ty);
+			uint16_t width = GetWidth();
+			uint16_t height = GetHeight();
+			uint16_t xdiv2 = width/2;
+			uint16_t xdiv6 = width/6;
+			uint16_t ydiv2 = height/2;
+			uint16_t ydiv6 = height/6;
+			uint16_t xl = xdiv2-xdiv6;
+			uint16_t xh = xdiv2+xdiv6;
+			uint16_t yl = ydiv2-ydiv6;
+			uint16_t yh = ydiv2+ydiv6;
+			if ((ty > yl) && (ty < yh))
+			{
+				if ((tx > xl) && (tx < xh)) startStop(); // center
+				else {
+					if (tx < xl) evtStation(-1); // 
+					else evtStation(+1);// evtStation(1);
+				}
+			} else 
+				if (ty < yl) setRelVolume(+5); 
+			else setRelVolume(-5); 
+			
+		}
+	}
+}
+
 
 // indirect call to service
 IRAM_ATTR void multiService()
@@ -890,6 +958,8 @@ IRAM_ATTR void multiService()
 	if (isEncoder1) service(encoder1);
 	if (isButton0) serviceBtn(button0);
 	if (isButton1) serviceBtn(button1);
+	if (isJoystick0) serviceJoystick(joystick0);
+	if (isJoystick1) serviceJoystick(joystick1);
 	ServiceAddon();
 }
 //--------------------
@@ -900,7 +970,7 @@ void task_lcd(void *pvParams)
 {
 	event_lcd_t evt ; // lcd event	
 	event_lcd_t evt1 ; // lcd event	
-	
+	ESP_LOGD(TAG, "task_lcd Started, LCD Type %d",lcd_type);
 	while (1)
 	{	
 		if (itLcdOut==1) // switch off the lcd
@@ -1016,11 +1086,12 @@ void task_lcd(void *pvParams)
 // Main task of addon
 //------------------- 
 extern void rmt_nec_rx_task();
+
 void task_addon(void *pvParams)
 {
 	xTaskHandle pxCreatedTask;
 	customKeyInit();
-	initButtonEncoder();
+	initButtonDevices();
 	adcInit();
 	
 	serviceAddon = &multiService;		; // connect the 1ms interruption
@@ -1029,26 +1100,26 @@ void task_addon(void *pvParams)
 	//ir
 	// queue for events of the IR nec rx
 	event_ir = xQueueCreate(5, sizeof(event_ir_t));
-	ESP_LOGI(TAG,"event_ir: %x",(int)event_ir);
+	ESP_LOGD(TAG,"event_ir: %x",(int)event_ir);
 	// queue for events of the lcd
 	event_lcd = xQueueCreate(20, sizeof(event_lcd_t));
-	ESP_LOGI(TAG,"event_lcd: %x",(int)event_lcd);	
+	ESP_LOGD(TAG,"event_lcd: %x",(int)event_lcd);	
 	
-	xTaskCreatePinnedToCore(rmt_nec_rx_task, "rmt_nec_rx_task", 2148, NULL, PRIO_RMT, pxCreatedTask,CPU_RMT);
+	xTaskCreatePinnedToCore(rmt_nec_rx_task, "rmt_nec_rx_task", 2148, NULL, PRIO_RMT, &pxCreatedTask,CPU_RMT);
 	ESP_LOGI(TAG, "%s task: %x","rmt_nec_rx_task",(unsigned int)pxCreatedTask);		;
-	xTaskCreatePinnedToCore (task_lcd, "task_lcd", 2200, NULL, PRIO_LCD, &pxCreatedTask,CPU_LCD); 
-	ESP_LOGI(TAG, "%s task: %x","task_lcd",(unsigned int)pxCreatedTask);
+	xTaskCreatePinnedToCore (task_lcd, "task_lcd", 2200, NULL, PRIO_LCD, &pxTaskLcd,CPU_LCD); 
+	ESP_LOGI(TAG, "%s task: %x","task_lcd",(unsigned int)pxTaskLcd);
+	getTaskLcd(&pxTaskLcd); // give the handle to xpt
 	vTaskDelay(1);	
-
-	if (!(isColor)) u8g2_SendBuffer(&u8g2);
 	wakeLcd();
 	
 	while (1)
 	{
 		adcLoop();  // compute the adc keyboard
 		encoderLoop(); // compute the encoder
-		buttonsLoop(); // compute the buttons
+		buttonsLoop(); // compute the buttons and joysticks
 		irLoop();  // compute the ir		
+		touchLoop();
 		if (itAskTime) // time to ntp. Don't do that in interrupt.
 		{			
 			if (ntp_get_time(&dt) )
@@ -1060,13 +1131,6 @@ void task_addon(void *pvParams)
 			itAskTime = false;
 		}	
 		
-/*		if (itAskStime) // time start the time display. Don't do that in interrupt.
-		{    
-			Screen(stime);
-			//drawScreen();
-			itAskStime = false;
-		}
-*/	
 		if (timerScreen >= 3) //  sec timeout transient screen
 		{
 			timerScreen = 0;
@@ -1151,7 +1215,7 @@ void addonParse(const char *fmt, ...)
 //		xQueueSend(event_lcd,&evt, 0);
    } else
  ////// STOPPED  ##CLI.STOPPED#  
-   if ((ici=strstr(line,"STOPPED")) != NULL)
+   if (((ici=strstr(line,"STOPPED")) != NULL)&&(strstr(line,"C_HDER") == NULL)&&(strstr(line,"C_PLIST") == NULL))
    {
 		state = false;	  
  		evt.lcmd = lstop;

@@ -8,22 +8,25 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
 #include "ucg.h"
 
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "driver/i2c.h"
 #include "ucg_esp32_hal.h"
+#include "xpt2046.h"
 
 #ifdef KaRadio32
 #include "gpio.h"
 #include "vs1053.h"
+
 #endif
 
 #define TAG  "ucg_hal"
 
-static spi_device_handle_t handle; // SPI handle.
+static spi_device_handle_t handle; // SPI handle of the spi lcd interface.
+//static spi_device_handle_t t_handle; // SPI handle of the spi touch interface.XPT2046_Touchscreen ts = XPT2046_Touchscreen();
+
 DRAM_ATTR static ucg_esp32_hal_t ucg_esp32_hal; // HAL state data.
 static ucg_esp32_oneByte oneByte;
 static spi_transaction_t trans_desc;
@@ -64,6 +67,7 @@ void sendOneByte()
 		
 	if (nb != 0)
 	{
+//		printf("O");
 //		spi_transaction_t trans_desc;
 		memset(&trans_desc,0,sizeof(spi_transaction_t));
 		
@@ -80,27 +84,25 @@ void sendOneByte()
 		trans_desc.tx_buffer = oneByte.data;
 		ESP_ERROR_CHECK(spi_device_transmit(handle, &trans_desc));							
 */		
-		
-		
-//		printf("O");
 	}
 }
+
+
 
 //IRAM_ATTR 
 void addOneByte(uint8_t bt)
 {
 	oneByte.data[oneByte.nb++] = bt;
-	if (oneByte.nb >ONEBYTEMAX-1) sendOneByte(); //security, but ucglib send a max of 4 bytes alone.
+	if (oneByte.nb > ONEBYTEMAXM1) sendOneByte(); //security, but ucglib send a max of 4 bytes alone.
 }
 
 
 int16_t ucg_com_hal(ucg_t *ucg, int16_t msg, uint16_t arg, uint8_t *data)
 {
-  taskYIELD();
-
   switch(msg)
   {
-    case UCG_COM_MSG_POWER_UP: {
+    case UCG_COM_MSG_POWER_UP: 
+	{
       /* "data" is a pointer to ucg_com_info_t structure with the following information: */
       /*	((ucg_com_info_t *)data)->serial_clk_speed value in nanoseconds */
       /*	((ucg_com_info_t *)data)->parallel_clk_speed value in nanoseconds */
@@ -114,6 +116,8 @@ int16_t ucg_com_hal(ucg_t *ucg, int16_t msg, uint16_t arg, uint8_t *data)
 				ucg_esp32_hal.cs == UCG_ESP32_HAL_UNDEFINED) {
 			break;
 		}
+		
+// init gpio DC and Reset
 		uint64_t bitmask = 0;
 		if (ucg_esp32_hal.dc != UCG_ESP32_HAL_UNDEFINED) {
 			bitmask = bitmask | (1<<ucg_esp32_hal.dc);
@@ -121,7 +125,21 @@ int16_t ucg_com_hal(ucg_t *ucg, int16_t msg, uint16_t arg, uint8_t *data)
 		if (ucg_esp32_hal.reset != UCG_ESP32_HAL_UNDEFINED) {
 			bitmask = bitmask | (1<<ucg_esp32_hal.reset);
 		}
-
+/*		if (ucg_esp32_hal.cs != UCG_ESP32_HAL_UNDEFINED) {
+			bitmask = bitmask | (1<<ucg_esp32_hal.cs);
+		}
+*/		
+		gpio_config_t gpioConfig;
+		gpioConfig.pin_bit_mask = bitmask;
+		gpioConfig.mode         = GPIO_MODE_OUTPUT;
+		gpioConfig.pull_up_en   = GPIO_PULLUP_ENABLE;
+		gpioConfig.pull_down_en = GPIO_PULLDOWN_DISABLE;
+		gpioConfig.intr_type    = GPIO_INTR_DISABLE;
+		ESP_ERROR_CHECK(gpio_config(&gpioConfig));		
+		if (ucg_esp32_hal.reset != UCG_ESP32_HAL_UNDEFINED) gpio_set_level(ucg_esp32_hal.reset, 1);
+//		gpio_set_level(ucg_esp32_hal.cs, 1);		
+		gpio_set_level(ucg_esp32_hal.dc, 0);		
+		
 #ifndef KaRadio32
 // init the spi master if not done elsewhere
  		  spi_bus_config_t bus_config;
@@ -132,20 +150,7 @@ int16_t ucg_com_hal(ucg_t *ucg, int16_t msg, uint16_t arg, uint8_t *data)
 		  bus_config.quadhd_io_num = -1; // Not used
 //done for vs1053
 		  ESP_ERROR_CHECK(spi_bus_initialize(KSPI, &bus_config, 1));
-#endif		
-		
-		gpio_config_t gpioConfig;
-		gpioConfig.pin_bit_mask = bitmask;
-		gpioConfig.mode         = GPIO_MODE_OUTPUT;
-		gpioConfig.pull_up_en   = GPIO_PULLUP_DISABLE;
-		gpioConfig.pull_down_en = GPIO_PULLDOWN_DISABLE;
-		gpioConfig.intr_type    = GPIO_INTR_DISABLE;
-		ESP_ERROR_CHECK(gpio_config(&gpioConfig));
-		
-		gpio_set_level(ucg_esp32_hal.reset, 0);
-		gpio_set_level(ucg_esp32_hal.cs, 0);		
-		gpio_set_level(ucg_esp32_hal.dc, 0);		
-		
+#endif			
 		spi_device_interface_config_t dev_config;
 		dev_config.address_bits     = 0;
 		dev_config.command_bits     = 0;
@@ -161,8 +166,11 @@ int16_t ucg_com_hal(ucg_t *ucg, int16_t msg, uint16_t arg, uint8_t *data)
 		dev_config.queue_size       = 1;
 		dev_config.pre_cb           = NULL;
 		dev_config.post_cb          = NULL;
-		ESP_LOGI(TAG, "... Adding device bus  Speed= %d.",dev_config.clock_speed_hz);
+		ESP_LOGI(TAG, "... Adding spi lcd bus  Speed= %d.",dev_config.clock_speed_hz);
 		ESP_ERROR_CHECK(spi_bus_add_device(ucg_esp32_hal.spi_no, &dev_config, &handle)); 
+		
+		// init TOuch screen if any
+		xpt_init();		
 	}
 		break;
 
@@ -184,7 +192,7 @@ int16_t ucg_com_hal(ucg_t *ucg, int16_t msg, uint16_t arg, uint8_t *data)
       /* "arg" = 1: set the reset output line to 1 */
       /* "arg" = 0: set the reset output line to 0 */
 		sendOneByte();
-		gpio_set_level(ucg_esp32_hal.reset, arg);
+		if (ucg_esp32_hal.reset != UCG_ESP32_HAL_UNDEFINED) gpio_set_level(ucg_esp32_hal.reset, arg);
       break;
     case UCG_COM_MSG_CHANGE_CD_LINE:
 //	printf("C");
@@ -228,7 +236,7 @@ int16_t ucg_com_hal(ucg_t *ucg, int16_t msg, uint16_t arg, uint8_t *data)
 //		spi_transaction_t trans_desc;
 		memset(&trans_desc,0,sizeof(spi_transaction_t));
 		uint8_t* txbf;
-		uint8_t* txb = heap_caps_malloc(arg*2, MALLOC_CAP_DMA);
+		uint8_t* txb = heap_caps_malloc(arg, MALLOC_CAP_DMA);
 //		WORD_ALIGNED_ATTR void* txb = data;
 		if (txb == NULL) break;
 		txbf = txb;
