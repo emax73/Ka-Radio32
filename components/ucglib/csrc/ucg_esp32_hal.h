@@ -13,6 +13,7 @@
 
 #define UCG_ESP32_HAL_UNDEFINED (-1)
 #define ONEBYTEMAX 4
+#define ONEBYTEMAXM1 3
 typedef struct {
 #ifdef KaRadio32	
 	uint8_t spi_no;
@@ -24,6 +25,8 @@ typedef struct {
 	gpio_num_t cs;
 	gpio_num_t reset;
 	gpio_num_t dc;
+//	gpio_num_t t_cs;  // touch cs
+//	gpio_num_t t_irq; //touch irq
 } ucg_esp32_hal_t ;
 
 //cumul one byte entries

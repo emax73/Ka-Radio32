@@ -82,14 +82,12 @@ typedef struct {
 extern xQueueHandle event_ir;
 extern u8g2_t u8g2;
 extern ucg_t ucg;
-//IRAM_ATTR  void (*serviceEncoder)();
 void task_addon(void *pvParams);
 void task_lcd(void *pvParams);
 void lcd_init(uint8_t Type);
 void (*serviceAddon)();
 void addonParse(const char *fmt, ...);
-void lcd_state(const char* State);
-void lcd_welcome(const char* ip);
+void lcd_welcome(const char* ip,const char*state);
 void setFuturNum(int16_t new);
 int16_t getFuturNum();
 void addonDt();

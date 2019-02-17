@@ -15,7 +15,7 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "gpio.h"
-
+#include "app_main.h"
 #include "MerusAudio.h"
 
 #include "audio_player.h"
@@ -73,8 +73,8 @@ static void init_i2s(renderer_config_t *config)
             .bits_per_sample = config->bit_depth,
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,   // 2-channels
             .communication_format = comm_fmt,
-            .dma_buf_count = 16,                            // number of buffers, 128 max.
-            .dma_buf_len = 128,                          // size of each buffer
+            .dma_buf_count = bigSram()?16:16,                            // number of buffers, 128 max.  16
+            .dma_buf_len = bigSram()?256:128,                          // size of each buffer 128
 //            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,        // lowest level 1
             .intr_alloc_flags = 0,        // default
 			.use_apll = use_apll			
@@ -84,13 +84,14 @@ static void init_i2s(renderer_config_t *config)
 	gpio_num_t bclk;
 	gpio_num_t i2sdata;
 	gpio_get_i2s(&lrck ,&bclk ,&i2sdata );
-    i2s_pin_config_t pin_config = {
-            .bck_io_num = bclk,
-            .ws_io_num = lrck,
-            .data_out_num = i2sdata,
-            .data_in_num = I2S_PIN_NO_CHANGE
-    };
 
+	i2s_pin_config_t pin_config = {
+				.bck_io_num = bclk,
+				.ws_io_num = lrck,
+				.data_out_num = i2sdata,
+				.data_in_num = I2S_PIN_NO_CHANGE
+	};
+	
     if (i2s_driver_install(config->i2s_num, &i2s_config, 0, NULL) != ESP_OK)
 	{
 		i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1;
@@ -107,7 +108,8 @@ static void init_i2s(renderer_config_t *config)
         i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN);
     }
     else {
-        i2s_set_pin(config->i2s_num, &pin_config);
+		if ((lrck!=255) && (bclk!=255) && (i2sdata!=255))
+			i2s_set_pin(config->i2s_num, &pin_config);
     }
 
     i2s_stop(config->i2s_num);
@@ -228,6 +230,7 @@ void render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
     // support only 16 bit buffers for now
     if(buf_desc->bit_depth != I2S_BITS_PER_SAMPLE_16BIT) {
         ESP_LOGD(TAG, "unsupported decoder bit depth: %d", buf_desc->bit_depth);
+		renderer_stop();
         return;
     }
 
@@ -254,6 +257,7 @@ void render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
 	if (outBuf8 == NULL) 
 	{
 		ESP_LOGE(TAG, "malloc buf failed len:%d ",buf_len);
+		renderer_stop();
 		return;
 	}
 	outBuf32 =(uint32_t*)outBuf8;
@@ -314,7 +318,7 @@ void render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
 		if (res != ESP_OK) {
 				ESP_LOGE(TAG, "i2s_write error %d",res);
 		}
-		if (bytes_written != buf_len*(2/buf_desc->num_channels))ESP_LOGI(TAG, "written: %d, len: %d",bytes_written,bytes_left);
+		if (bytes_written != buf_len*(2/buf_desc->num_channels))ESP_LOGV(TAG, "written: %d, len: %d",bytes_written,bytes_left);
         bytes_left -= bytes_written;
         buf += bytes_written;
     }

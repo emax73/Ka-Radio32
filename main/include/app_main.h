@@ -40,7 +40,7 @@
 #include "driver/timer.h"
 
 #define TIMER_DIVIDER 16 	//5000000Hz 5MHz
-#define TIMER_DIVIDER1MS 8000 //10000Hz 
+#define TIMER_DIVIDER1MS TIMER_BASE_CLK/10000 //10000Hz 
 #define TIMER_DIVIDER1mS 8 //10000000Hz 10MHz
 
 #define TIMERVALUE(x) (x*5000000 )
@@ -92,15 +92,15 @@ extern uint32_t wakeDelay;
 
 
 // Tasks priority
-#define PRIO_MAD 		7
+#define PRIO_MAD 		5
 #define PRIO_VS1053 	4
-#define PRIO_RMT		6
-#define PRIO_UART		2
-#define PRIO_CLIENT		4
-#define PRIO_SERVER		3
-#define PRIO_ADDON		5
-#define PRIO_LCD		6
-#define PRIO_SUBSERV	3
+#define PRIO_RMT		5
+#define PRIO_UART		3
+#define PRIO_CLIENT		6
+#define PRIO_SERVER		5
+#define PRIO_ADDON		6
+#define PRIO_LCD		4
+#define PRIO_SUBSERV	5
 #define PRIO_TIMER		11
 #define PRIO_OTA		10
 
@@ -137,8 +137,10 @@ void startWake(uint32_t delay);
 void stopWake();
 void noInterrupt1Ms();
 void interrupt1Ms();
-void noInterrupts();
-void interrupts();
+#define noInterrupts noInterrupt1Ms
+#define interrupts interrupt1Ms
+//void noInterrupts();
+//void interrupts();
 char* getIp();
 
 

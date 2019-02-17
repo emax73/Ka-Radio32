@@ -1,13 +1,15 @@
 var content = "Content-type",
 	ctype = "application/x-www-form-urlencoded",
 	cjson = "application/json";
-var auto,intervalid , intervalrssi  ,recrssi = 0, timeid, websocket,urlmonitor , e, playing = false, curtab = "tab-content1",stchanged = false,maxStation = 255;
+var auto,intervalid , intervalrssi  , timeid, websocket,urlmonitor , e, moniPlaying = false,editPlaying = false, editIndex= 0 ,curtab = "tab-content1",stchanged = false,maxStation = 255,themeIn = "0";
 const karadio = "Karadio32";
+const working = "Working.. Please Wait";
 
 function openwebsocket(){	
-	autoplay(); //to force the server socket to accept and open the web server client.
+//	autoplay(); //to force the server socket to accept and open the web server client.
 	websocket = new WebSocket("ws://"+window.location.host+"/");
 	console.log("url:"+"ws://"+window.location.host+"/");
+
 
 	websocket.onmessage = function (event) {
 	try{	
@@ -17,7 +19,6 @@ function openwebsocket(){
 		{ document.getElementById('meta').innerHTML = karadio;setMainHeight(curtab);}
 		if (arr["meta"]) 
 			{	document.getElementById('meta').innerHTML = arr["meta"].replace(/\\/g,"");
-				//document.getElementById("CONTENT").style.marginTop = document.getElementById('HEADER').clientHeight+"px" ;
 				setMainHeight(curtab);
 			}
 		changeTitle(document.getElementById('meta').innerHTML);
@@ -26,24 +27,25 @@ function openwebsocket(){
 		if (arr["wssound"]) soundResp(arr["wssound"]); 
 		if (arr["monitor"]) playMonitor(arr["monitor"]); 
 		if (arr["wsstation"]) wsplayStation(arr["wsstation"]); 
-		if (arr["wsrssi"]) {document.getElementById('rssi').innerHTML = arr["wsrssi"]+' dBm';recrssi = 0;}
+		if (arr["wsrssi"]) {document.getElementById('rssi').innerHTML = arr["wsrssi"]+' dBm';setTimeout(wsaskrssi,5000);}
+		if (arr["upgrade"]) {document.getElementById('updatefb').innerHTML = arr["upgrade"];}
 	} catch(e){ console.log("error"+e);}
 }
 
 	websocket.onopen = function (event) {
 		console.log("Open, url:"+"ws://"+window.location.host+"/");
-//		console.log("onopen websocket: "+websocket);
 		if(window.timerID){ /* a setInterval has been fired */
-		window.clearInterval(window.timerID);
-		window.timerID=0;}
-		refresh();
-		
+			window.clearInterval(window.timerID);
+			window.timerID=0;
+		}
+		setTimeout(wsaskrssi, 5000); // start the rssi display
+		websocket.send("opencheck");	
 	}
 	websocket.onclose = function (event) {
 		console.log("onclose code: "+event.code);
 		console.log("onclose reason: "+event.reason);
 		if(!window.timerID){ /* avoid firing a new setInterval, after one has been done */
-		window.timerID=setInterval(function(){checkwebsocket()}, 1000);
+		window.timerID=setInterval(function(){checkwebsocket()}, 1500);
 		}	
 	}	
 	websocket.onerror = function(event) {
@@ -61,8 +63,7 @@ function changeTitle($arr) {
 // ask for the rssi and restart the timer
 function wsaskrssi(){
 	try{
-	if (recrssi ==0) websocket.send("wsrssi");	
-	recrssi = 1;
+			websocket.send("wsrssi &");	
 	} catch(e){ console.log("error"+e);}
 }
 
@@ -83,7 +84,7 @@ function wsplayStation($arr){
 function playMonitor($arr){
 	urlmonitor = "";
 	urlmonitor = $arr;	
-	if (playing)
+	if (moniPlaying)
 	{
 		monitor = document.getElementById("audio");	
 		if (urlmonitor.endsWith("/"))
@@ -102,7 +103,7 @@ function mplay(){
 	monitor.volume = document.getElementById("volm_range").value / 100;
 	while (monitor.networkState == 2);
 	monitor.play();
-	playing = true;	
+	moniPlaying = true;	
 	monitor.muted = false;
 }	
 
@@ -115,7 +116,7 @@ function mstop(){
 		monitor = document.getElementById("audio");	
 		monitor.muted = true;
 		monitor.src = 'http://karadio.karawin.fr/silence-1sec.mp3';
-		playing = false;
+		moniPlaying = false;
 }	
 function mpause(){
 		monitor = document.getElementById("audio");	
@@ -189,7 +190,9 @@ function wtop() {
 // display current time
 function dtime() {
 	var d = new Date(), elt = document.getElementById('sminutes'),eltw = document.getElementById('wminutes');
-	document.getElementById("time").innerHTML = d.toLocaleTimeString();	
+//	document.getElementById("time").innerHTML = d.toLocaleTimeString();	
+	udate = d.toTimeString().split(" ");
+	document.getElementById("time").innerHTML = udate[0];	
 	if ((!isNaN(elt.innerHTML))&&(elt.innerHTML != "0") )
 		--elt.innerHTML;
 	if ((!isNaN(elt.innerHTML))&&(elt.innerHTML == 0)) elt.innerHTML = "0";
@@ -283,7 +286,10 @@ function stopWake(){
 
 function promptworking(label) {
 	document.getElementById('meta').innerHTML = label;
-	if (label == "") {document.getElementById('meta').innerHTML = karadio; refresh();}
+	if (label == "") {
+		document.getElementById('meta').innerHTML = karadio;
+//		refresh();
+	}
 }
 
 function saveTextAsFile()
@@ -487,7 +493,6 @@ function logValue(value) {
 //Log(128/(Midi Volume + 1)) * (-10) * (Max dB below 0/(-24.04))
 	var log = Number(value )+ 1;
 	var val= Math.round((Math.log10(255/log) * 105.54571334));
-//	console.log("Value= "+value+"   log de val="+log+" "+255/log +"  = "+Math.log10(255/log)  +"   new value= "+val );
 	return val;
 }
 
@@ -497,9 +502,7 @@ function onRangeVolChange($value,$local) {
 	document.getElementById('vol_span').innerHTML = (value * -0.5) + " dB";
 	document.getElementById('vol_range').value = $value;
 	document.getElementById('vol1_range').value = $value;
-	if ($local &&websocket.readyState == websocket.OPEN) websocket.send("wsvol=" + $value+"&");
-//	else 
-		if ($local)	
+	if ($local)	
 	{
 		xhr = new XMLHttpRequest();
 		xhr.open("POST","soundvol",false);
@@ -529,6 +532,8 @@ function wifi(valid) {
 			document.getElementById('gw2').value = arr["gw2"];
 			chkip(document.getElementById('gw2'));
 			document.getElementById('ua').value = arr["ua"];
+			document.getElementById('host').value = arr["host"];
+			document.getElementById('tzo').value = arr["tzo"];
 			if (arr["dhcp"] == "1")
 				document.getElementById("dhcp").setAttribute("checked","");
 			else
@@ -555,6 +560,8 @@ function wifi(valid) {
 	+"&msk2=" + document.getElementById('mask2').value
 	+"&gw2=" + document.getElementById('gw2').value
 	+"&ua=" + encodeURIComponent(document.getElementById('ua').value) 
+	+"&host=" + encodeURIComponent(document.getElementById('host').value) 
+	+"&tzo=" + encodeURIComponent(document.getElementById('tzo').value) 
 	+"&dhcp=" + document.getElementById('dhcp').checked
 	+"&dhcp2=" + document.getElementById('dhcp2').checked+"&");
 }
@@ -568,11 +575,9 @@ function hardware(valid) {
 			if (arr['coutput'] != "4") 
 			{
 				document.getElementById("vs1052Only").style.display = "none";
-//				document.getElementById("vs1052Only0").style.display = "none";
 			}
 			else {
 				document.getElementById("vs1052Only").style.display = "run-in";
-//				document.getElementById("vs1052Only0").style.display = "run-in";
 			}
 		}
 	}
@@ -658,10 +663,52 @@ function autostart() {
 		xhr.send("&");		
 	} catch(e){console.log("error"+e);}	
 }
+//ask for the state of the theme
+function atheme() {
+	xhr = new XMLHttpRequest();
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4 && xhr.status == 200) {	
+			var arr = JSON.parse(xhr.responseText);
+			themeIn = arr["theme"]  ;			
+		}
+	}
+	try{		
+		xhr.open("POST","theme",false); // request auto state
+		xhr.setRequestHeader(content,ctype);
+		xhr.send("&");		
+	} catch(e){console.log("error"+e);}	
+}
 
 function Select() {
 	if (document.getElementById('aplay').checked)
 		 playStation() ;
+}
+
+function setEditBackground(tr) {
+		if (themeIn == '1')
+			tr.style.background =  "#1a3c56";
+		else
+			tr.style.background = "rgb(185, 213, 236)";
+}
+function playEditStation(tr) {
+	if (stchanged) stChanged();
+	id = tr.cells[0].innerText;
+	if ((editPlaying)&&(editIndex== tr))
+	{
+		stopStation();
+		tr.style.background = "initial";
+		editPlaying = false;
+		editIndex = 0;
+	}
+	else{
+		if (editIndex != 0) editIndex.style.background = "initial";
+		wsplayStation(id); // select the station in the list
+		editPlaying = true;
+		editIndex = tr;
+//		getComputedStyle(element).getPropertyValue('--color-font-general');
+		setEditBackground(tr);
+		playStation() ; //play it 
+	}
 }
 
 function playStation() {
@@ -800,8 +847,8 @@ function parseEditURL(e)
 }
 
 function refreshList() {
-	promptworking("Working.. Please Wait");
-	intervalid =window.setTimeout(refreshListtemp, 2);
+	promptworking(working);
+	intervalid =window.setTimeout(refreshListtemp, 10);
 }
 function refreshListtemp() {
 	if (stchanged) stChanged();
@@ -813,7 +860,7 @@ function refreshListtemp() {
 	refresh();
 }
 function clearList() {
-		promptworking("Working.. Please Wait");
+		promptworking(working);
 	if (confirm("Warning: This will clear all stations.\n Be sure to save station before.\nClear now?"))
 	{
 		xhr = new XMLHttpRequest();
@@ -821,25 +868,21 @@ function clearList() {
 		xhr.setRequestHeader(content,ctype);
 		xhr.send( );
 		refreshList();
-		window.setTimeout(loadStations, 5);
+		window.setTimeout(loadStations, 10);
 	}
 	else 	promptworking("");
 }	
-/*
-function removeOptions(selectbox)
-{
-    var i;
-    for(i = selectbox.options.length - 1 ; i >= 0 ; i--)
-    {
-        selectbox.remove(i);
-    }
-}
-*/
 
 function upgrade()
 {
-	if (websocket.readyState == websocket.OPEN) websocket.send("upgrade");	
-	alert("Rebooting to the new release\nPlease refresh the page in few seconds.");
+	try{
+		xhr = new XMLHttpRequest();
+		xhr.open("POST","upgrade",false);
+		xhr.setRequestHeader(content,ctype);
+		xhr.send();
+	} catch(e){console.log("error"+e);}	
+	
+//	alert("Rebooting to the new release\nPlease refresh the page in few seconds.");
 }
 function checkhistory()
 {
@@ -900,7 +943,7 @@ function downloadStations()
 		reader = new FileReader();
 		xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function() {
-			promptworking("Working.. Please Wait"); // some time to display promptworking
+			promptworking(working); // some time to display promptworking
 		}
 		reader.onload = function(e){
 			function fillInfo(ind,arri){
@@ -949,8 +992,7 @@ function downloadStations()
 		file = document.getElementById('fileload').files[0];
 		if (file==null) alert("Please select a file");
 		else {			
-//			stopStation();
-			promptworking("Working.. Please Wait");		
+			promptworking(working);		
 			reader.readAsText(file);			
 		}
 	}	
@@ -967,8 +1009,7 @@ function moveNodes(a, b){
 	for (txt=0;txt<maxStation;txt++)
 	{
 		pa1.rows[txt].cells[0].innerText = txt.toString();
-//		pa1.rows[txt].cells[6].innerHTML = "<a href=\"#\" onClick=\"editStation("+ txt.toString()+")\">Edit</a>";
-		pa1.rows[txt].cells[6].innerHTML = b.parentNode.rows[txt].cells[6].innerHTML ;
+		pa1.rows[txt].cells[3].innerHTML = b.parentNode.rows[txt].cells[3].innerHTML ;
 	}
 	stchanged = true;
 	document.getElementById("stsave").disabled = false;
@@ -982,26 +1023,34 @@ function dragDrop(ev) {
 function allowDrop(ev) {
     ev.preventDefault();
 }
+
 function stChanged()
 {
 	var i,indmax,tosend,index,tbody = document.getElementById("stationsTable").getElementsByTagName('tbody')[0];
 	function fillInfo(ind){
+				var parser = document.createElement('a');
+
 				id=tbody.rows[ind].cells[0].innerText;
 				name=tbody.rows[ind].cells[1].innerText;
-				url=tbody.rows[ind].cells[2].innerText;
-				file=tbody.rows[ind].cells[3].innerText;
-				port= tbody.rows[ind].cells[4].innerText;
-				ovol = tbody.rows[ind].cells[5].innerText;
+				furl=tbody.rows[ind].cells[2].innerText;
+				parser.href = "http://"+furl;
+				url = parser.hostname;
+				file = parser.pathname+parser.hash+parser.search;
+				port = parser.port;
+				if (!port ) port = 80;
+/*				file=tbody.rows[ind].cells[3].innerText;
+				port= tbody.rows[ind].cells[4].innerText;*/
+				ovol = tbody.rows[ind].cells[3].innerText;
 				localStorage.setItem(id,"{\"Name\":\""+name+"\",\"URL\":\""+url +"\",\"File\":\""+file+"\",\"Port\":\""+port+"\",\"ovol\":\""+ovol+"\"}");
 				tosend = tosend+"&id="+id + "&url="+ url+"&name="+ name+ "&file="+file + "&port=" +port+"&ovol=" +ovol+"&";
 	}
-	promptworking("Working.. Please Wait"); // some time to display promptworking
+	promptworking(working); // some time to display promptworking
 	if (stchanged && confirm("The list is modified. Do you want to save the modified list?"))
 	{
 		xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function() {
 		}
-		promptworking("Working.. Please Wait"); // some time to display promptworking
+		promptworking(working); // some time to display promptworking
 		localStorage.clear();	
 		indmax = 7;
 		index = 0;	
@@ -1029,6 +1078,9 @@ function stChanged()
 		}
 		loadStationsList(maxStation);		
 	}
+	else 
+	if (stchanged) 
+		loadStations();
 	stchanged = false;
 	document.getElementById("stsave").disabled = true;
 	promptworking("");
@@ -1037,6 +1089,7 @@ function stChanged()
 //Load the Stations table
 function loadStations() {
 	var new_tbody = document.createElement('tbody'),
+	idlist,select,
 	id = 0;
 	function cploadStations(id,arr) {
 			tr = document.createElement('TR'),
@@ -1047,20 +1100,51 @@ function loadStations() {
 			tr.ondrop=dragDrop;
 			tr.ondragover=allowDrop;
 			td.appendChild(document.createTextNode(id ));
+			td.setAttribute('onclick', 'playEditStation(this.parentNode);');
 			tr.appendChild(td);
-			for(key in arr){
+// Name
 				td = document.createElement('TD');
 				td.style="word-break: break-all;overflow-wrap: break-word; word-wrap: break-word;";
-				if(arr[key].length > 116) arr[key] = "Error";
-				td.appendChild(document.createTextNode(arr[key]));
+				td.setAttribute('onclick','playEditStation(this.parentNode);');
+				if(arr["Name"].length > 116) arr["Name"] = "Error";
+				td.appendChild(document.createTextNode(arr["Name"]));
 				tr.appendChild(td);
-			}
+// URL
+				td = document.createElement('TD');
+				td.style="word-break: break-all;overflow-wrap: break-word; word-wrap: break-word;";
+				td.setAttribute('onclick','playEditStation(this.parentNode);');
+				if (arr["Name"].length > 0)
+				{
+					if(arr["URL"].length > 116) arr["URL"] = "Error";
+					if(arr["File"].length > 116) arr["File"] = "Error";
+					if(arr["Port"].length > 116) arr["Port"] = "Error";
+					td.appendChild(document.createTextNode(arr["URL"] + ":" + arr["Port"] + arr["File"]));
+				} else
+					td.appendChild(document.createTextNode(""));
+				tr.appendChild(td);
+// Ovol
+				td = document.createElement('TD');
+				td.style="word-break: break-all;overflow-wrap: break-word; word-wrap: break-word;";
+				td.setAttribute('onclick','playEditStation(this.parentNode);');
+				if(arr["ovol"].length > 116) arr["ovol"] = "Error";
+				td.appendChild(document.createTextNode(arr["ovol"]));
+				tr.appendChild(td);
+
+// edit button			
 			td = document.createElement('TD');
-//			td.innerHTML = "<div  onClick=\"editStation("+id+")\"> Edit</div>";
+			td.style="text-align: center; vertical-align: middle;";
 			td.innerHTML = "<a href=\"javascript:void(0)\" onClick=\"editStation("+id+")\">Edit</a>";
 			tr.appendChild(td);
+			if (idlist === idstr){
+				setEditBackground(tr);
+				editIndex = tr;
+				editPlaying = true;
+			}
 			new_tbody.appendChild(tr);
 	}	
+	select = document.getElementById('stationsSelect');
+	idlist = select.options[select.selectedIndex].value.split(":");
+	idlist = idlist[0];	
 	for(id; id < maxStation; id++) {
 		idstr = id.toString();		
 		if (localStorage.getItem(idstr) != null)
@@ -1097,7 +1181,6 @@ function loadStations() {
 function loadStationsList(max) {
 	var foundNull = false,id,opt,arr,select, liste= [],i;
 	select = document.getElementById("stationsSelect");
-	//clear Select
     for(i = select.options.length - 1 ; i >= 0 ; i--)
     {
         select.remove(i);
@@ -1109,16 +1192,13 @@ function loadStationsList(max) {
 			{
 				opt = document.createElement('option');
 				opt.appendChild(document.createTextNode(id+": \t"+arr["Name"]));
-//				opt.id = id;
-//				select.appendChild(opt);
 				select.add(opt);
 			} else foundNull = true;
 			return foundNull;
 	}		
 	select.disabled = true;
-	promptworking("Working.. Please Wait");
+	promptworking(working);
 	for(id=0; id<max; id++) {
-//		if (foundNull) break;
 		idstr = id.toString();
 		if (localStorage.getItem(idstr) != null)
 		{	
@@ -1126,7 +1206,6 @@ function loadStationsList(max) {
 				arr = JSON.parse(localStorage.getItem(idstr));
 			} catch(e){console.log("error"+e);}
 			foundNull = cploadStationsList(id,arr);
-//			liste.push(arr);
 		}
 		else
 		try {
@@ -1138,7 +1217,6 @@ function loadStationsList(max) {
 					} catch(e){console.log("error"+e);}
 					localStorage.setItem(idstr,xhr.responseText);
 					foundNull = cploadStationsList(id,arr);
-//					liste.push(arr);
 				}
 			}
 			xhr.open("POST","getStation",false);
@@ -1147,49 +1225,12 @@ function loadStationsList(max) {
 		} catch(e){console.log("error"+e); id--;}
 	}
 	
-/*
-	var map = liste.map(function(e, i) {
-		return { index: i, value: e.Name.toLowerCase() };
-	})
-	map.sort(function(a, b) {
-		return +(a.value > b.value) || +(a.value === b.value) - 1;
-	});
-
-	// on utilise un objet final pour les résultats
-	var result = map.map(function(e){
-		return {index: e.index, value:liste[e.index]};
-});	
-	for(id=0; id < maxStation; id++) {
-		foundNull = cploadStationsList(result[id].index,result[id].value);
-	}	
-*/	
 	promptworking("");
 	select.disabled = false;
 	select.options.selectedIndex= parseInt(localStorage.getItem('selindexstore'));
-//	getSelIndex();
-
 }
-/*	
-function getSelIndex() {
-		xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = function() {
-			if (xhr.readyState == 4 && xhr.status == 200) {
-				console.log("JSON: " + xhr.responseText);
-				var arr = JSON.parse(xhr.responseText);
-				if(arr["Index"].length > 0) {
-					document.getElementById("stationsSelect").options.selectedIndex = arr["Index"];
-					document.getElementById("stationsSelect").disabled = false;
-					console.log("selIndex received " + arr["Index"]);
-				} 
-			}
-		}
-		xhr.open("POST","getSelIndex",false);
-		xhr.setRequestHeader(content,ctype);
-		xhr.send();	
-}	*/
-
 function setMainHeight(name) {
-	intervalid =window.setTimeout(setMainHeightd,2,name );	
+	intervalid =window.setTimeout(setMainHeightd,10,name );	
 }
 
 function setMainHeightd(name) {
@@ -1198,24 +1239,19 @@ function setMainHeightd(name) {
 	if(h<minh) h = minh;
 	document.getElementById("MAIN").style.height = h +"px";
 	document.getElementById("MAINCONTENT").style.top = document.getElementById('HEADER').clientHeight+"px" ;
-//	checkwebsocket();
 }
 
 function resizeContent(){
 	if (document.getElementById("MAINCONTENT") != null) 
 	{
 		setMainHeight(curtab);
-		//document.getElementById("MAINCONTENT").style.top = document.getElementById('HEADER').clientHeight+"px" ;
 	}
 }
 window.onresize = resizeContent;
-
-
 function printList()
 {
    var html="<html>";
    id = 0;
-//   html+= document.getElementById(id).innerHTML;
    html+="</html>";
    html+="<h1>KaraDio Stations list</h1><br/><hr><br/>";
    for(id; id < maxStation; id++) {
@@ -1245,13 +1281,13 @@ document.addEventListener("DOMContentLoaded", function() {
 			refresh();
 			curtab = "tab-content1";
 			setMainHeight(curtab);
-		});
+	});
 	document.getElementById("tab2").addEventListener("click", function() {
 			if (stchanged) stChanged();
 			loadStations(/*1*/);
 			curtab = "tab-content2";
-			intervalid =window.setTimeout(setMainHeight,1,curtab );			
-		});
+			intervalid =window.setTimeout(setMainHeight,5,curtab );			
+	});
 	document.getElementById("tab3").addEventListener("click", function() {
 			if (stchanged) stChanged();
 			curtab = "tab-content3";
@@ -1259,21 +1295,53 @@ document.addEventListener("DOMContentLoaded", function() {
 			hardware(0);
 			checkversion();
 			setMainHeight(curtab);	
-		});
+	});
+	window.addEventListener("keydown", function (event)
+	{
+		if (event.defaultPrevented) {
+			return; 
+		}
+		switch (event.key) {
+		case "ArrowDown":
+		case "ArrowLeft":
+		if (event.ctrlKey) 
+		{
+			vol=parseInt(document.getElementById('vol_range').value);
+			if (vol <5) vol = 0;
+			else vol = vol -5;
+			onRangeVolChange(vol ,true)	 ;
+		}			
+		break;
+		case "ArrowUp":
+		case "ArrowRight":
+		{
+			vol=parseInt(document.getElementById('vol_range').value);
+			if (vol > 249) vol = 254;
+			else vol = vol+5;
+			onRangeVolChange(vol ,true)	 ;
+		}			
+		break;
+		default:
+		return;
+		}
+		event.preventDefault();
+	}, true);
+	
 	if (intervalid != 0)  window.clearTimeout(intervalid);
 	intervalid = 0;
 	if (timeid != 0)  window.clearInterval(timeid);
 	timeid = window.setInterval(dtime,1000);
-	loadStationsList(maxStation);
+	if (window.location.hostname != "192.168.4.1")
+		loadStationsList(maxStation);
+	else document.getElementById("tab3").click();
 	checkwebsocket();
+	promptworking("");
 	refresh();
 	wifi(0) ;
 	hardware(0);
 	autostart();
-	checkversion();
+	atheme();
+	checkversion(); 
 	setMainHeight(curtab);
-	promptworking("");
-   	if (intervalrssi != 0)  window.clearTimeout(intervalrssi);
-	intervalrssi = 0;
-	intervalrssi = window.setInterval(wsaskrssi,5000 );
 });
+

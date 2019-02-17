@@ -20,32 +20,16 @@
 //#include "spi_flash.h"
 //#include <esp_libc.h>
 #include "interface.h"
-/*
-#define ICACHE_STORE_TYPEDEF_ATTR 
-#define ICACHE_STORE_ATTR 
-#define ICACHE_RAM_ATTR 
 
-#define EEPROM_START	0x3E0000 // Last 128k of flash (32Mbits or 4 MBytes)
-#define EEPROM_START1	0x3D0000 // Last 128k of flash (32Mbits or 4 MBytes)
-
-#define EEPROM_SIZE		0xFFFF	 // until xffff , 
-#define NBOLDSTATIONS	192
-*/
 #define NBSTATIONS		255
 const static char *TAG = "eeprom";
 static xSemaphoreHandle muxDevice;
-//const char streMSG[]   = {"Warning %s malloc low memory\n"};
-//const char saveStationPos[]  = {"saveStation fails pos=%d\n"};
-//const char getStationPos[]  = {"getStation fails pos=%d\n"};
-//const char streERASE[]  = {"erase setting1 (only one time) \n"};
-//const char streGETDEVICE[]  = {"getDeviceSetting%d fails\n"};
-//const char streSETDEVICE[]  = {"saveDeviceSetting%d:  null\n"};
 
 const esp_partition_t * DEVICE;
 const esp_partition_t * DEVICE1;
 const esp_partition_t * STATIONS;
 
-
+struct device_settings* g_device;
 
 void partitions_init(void)
 {
@@ -56,6 +40,7 @@ void partitions_init(void)
 	STATIONS = esp_partition_find_first(65,0,NULL);
 	if (STATIONS == NULL) ESP_LOGE(TAG, "STATIONS Partition not found");
 	muxDevice=xSemaphoreCreateMutex();
+	g_device = getDeviceSettings();  // allocate one for all
 }
 
 
@@ -123,10 +108,10 @@ int i = 0;
 //			eeSetClear(4096*i,buffer);
 			vTaskDelay(1); // avoid watchdog
 		}
-//		printf("erase All done\n");
+		kprintf("#erase All done##\n");
 		free(buffer);
 	} else	
-		printf("erase All fails\n");
+		ESP_LOGE(TAG,"erase All fails");
 	
 }
 
@@ -164,12 +149,11 @@ void eeEraseStations() {
 void saveStation(struct shoutcast_info *station, uint16_t position) {
 	uint32_t i = 0;
 	if (position > NBSTATIONS-1) {ESP_LOGE(TAG,"saveStation fails pos=%d",position);return;}
-	while (!eeSetData((position+1)*256, station, 256)) 
+	while (!eeSetData((position)*256, station, 256)) 
 	{
-		kprintf("Retrying %d on saveStation\n",i+1);
-		vTaskDelay ((i+1)*20+200) ;
+		ESP_LOGW(TAG,"Retrying %d on saveStation",i);
+		vTaskDelay ((i+1)*20+100) ;
 		i++; 
-//		if (i == 2) {clientDisconnect("saveStation low Memory"); vTaskDelay (300) ;} // stop the player
 		if (i == 10) return;
 	}
 }
@@ -179,9 +163,8 @@ void saveMultiStation(struct shoutcast_info *station, uint16_t position, uint8_t
 	if (number <= 0) return;
 	while (!eeSetData((position)*256, station, number*256))
 	{		
-		kprintf("Retrying %d on SaveMultiStation for %d stations\n",i+1,number);
-		vTaskDelay ((i+1)*20+300) ;
-		i++; 
+		ESP_LOGW(TAG,"Retrying %d on SaveMultiStation for %d stations",i,number);
+		vTaskDelay ((i++)*20+100) ;
 //		if (i == 3) {clientDisconnect("saveMultiStation low Memory"); vTaskDelay (300) ;}
 		if (i == 10) return;
 	}

@@ -7,12 +7,35 @@ A template is given by the pattern.csv file
 The default configuration of the current software is in the standard_adb.csv file.  
 A csv file is interpreted by an utility to generate a bin file that must be flashed at address 0x3a2000 only one time per esp32
 
-The msys32 and esp-idf environment must be operational.
-
 ---------------
 1/ Prerequisite
 ---------------
-First, make sure you have an updated partitions.bin file.
+Toolchain Setup
+--------------------
+The quick setup is to download the Windows all-in-one toolchain & MSYS2 zip file from dl.espressif.com:
+
+https://dl.espressif.com/.../esp32_win32_msys2...
+
+- Unzip the zip file to C:\ (or some other location, but this guide assumes C:\) and it will create an msys32 directory with a pre-prepared environment.
+- Open a MSYS2 MINGW32 terminal window by running C:\msys32\mingw32.exe. Create a directory named "esp" that is a default location to develop ESP32 applications. To do so, run the following shell command: mkdir -p ~/esp
+- Type : cd ~/esp to move the newly created directory. If there are no error messages you are done with this step.
+- Type : git clone -b v3.1.2 --recursive https://github.com/espressif/esp-idf.git
+- Create a new script file in C:/msys32/etc/profile.d/ directory. Name it export_idf_path.sh
+Identify the path to ESP-IDF directory. It is specific to your system configuration and may look something like C:\msys32\home\"your-user-name"\esp\esp-idf
+Add this to the above created script file: export IDF_PATH="C:/msys32/home/"your-user-name/esp/esp-idf"
+Save the script file.
+- Close MSYS2 window and open it again. Check if IDF_PATH is set, by typing: printenv IDF_PATH
+The path previously entered in the script file should be printed out.
+- Type : pip install --upgrade setuptools  
+- Type : python -m pip install --upgrade pip
+- Type : pip install future
+- Type : pacman -S mingw-w64-i686-python2-cryptography
+- Type : pip install cryptography
+- Place the Ka-Radio32-master files in "your-user-name"/esp folder. Find it at https://github.com/karawin/Ka-Radio32
+---
+  
+Second  make sure you have an updated partitions.bin file.  
+Find it at "your-user-name"/esp/Ka-Radio32/tree/master/binaries  
 This file contains the system partitions:
 ```
 $ make partition_table
@@ -51,89 +74,106 @@ If the software does not start properly, please check your values.
 A common mistake is to declare the same number for two functions.  
 See the log on the serial interface.
 
------------------------
-2/ Definition of gpio's
------------------------
-Edit this file to enter your gpio definitions.  
+------------------------------------
+2/ Definition of gpio's and options
+------------------------------------
+Edit the csv file to enter your gpio and options definitions.  
 See gpio.h for the default values if missing in the csv file.  
-Only modify the lines beginning with P_ by modifying only the last number.  
+Only modify the lines beginning with P_ or O_ by modifying only the last number.  
 for example:  
 P_MISO, data,u8,19  
 Change 19 to the desired number.  
-Do this for all P_ lines.  
+Do this for all P_ and O_lines.  
 Never change the string "P_XXXX, data,u8,"  
 A value base 10 is mandatory for each P_.  
 
-```
-SPI Bus:  
-K_SPI    Select the used spi : 1: HSPI, 2: VSPI
-P_MISO			Master Input, Slave Output  
-P_MOSI			Master Output, Slave Input   Named Data or SDA or D1 for oled  
-P_CLK			Master clock  Named SCL or SCK or D0 for oled  
-
-VS1053B:  
+## GPIO
+Definition of the lines in csv  
+- **SPI Bus:**  
+K_SPI		Select the used spi : 1: HSPI, 2: VSPI  
+P_MISO		Master Input, Slave Output    
+P_MOSI		Master Output, Slave Input   Named Data or SDA or D1 for oled  
+P_CLK		Master clock  Named SCL or SCK or D0 for oled  
+- **VS1053B:**  
 P_XCS			XCS  
 P_RST			RST  
 P_XDCS			XDCS  
 P_DREQ			P_DREQ  
-
-ENCODERS 0 & 1:  
+- **ENCODERS 0 & 1:**  
 P_ENC0_A			pin A clk  
 P_ENC0_B			pin B Data  
 P_ENC0_BTN			pin SW  
 P_ENC1_A			pin A clk  
 P_ENC1_B			pin B Data  
 P_ENC1_BTN			pin SW  
-
-BUTTONS PANEL 0 & 1 of three buttons (switch to gnd):  
+- **BUTTONS PANEL 0 & 1** of three buttons (switch to gnd):  
 P_BTN0_A		click:start/stop, double click:toggle, help: station  
 P_BTN0_B		click: +  
 P_BTN0_C		click: -  
 P_BTN1_A		start/stop, toggle, volume  
 P_BTN1_B		+  
 P_BTN1_C		-  
-
-Bus I2C (Oled & Lcd):  
+- **JOYSTICK 0 & 1**  
+P_JOY_0			Volume control  	
+P_JOY_1		
+- **Bus I2C (Oled & Lcd):**  
 P_I2C_SCL		SCL or SCK  
 P_I2C_SDA		SDA  
 P_I2C_RST		RST if any  
-
-LCD on SPI bus:  
+- **LCD on SPI bus:**  
 P_LCD_CS		CS  
 P_LCD_A0		A0 or D/C or DC  
 P_LCD_RST		RST or RES  
-
-Infrared remote:  
+- **Infrared remote:**  
 P_IR_SIGNAL		ir Y Signal  
-
-I2S bus:  
+- **I2S bus:**  
 P_I2S_LRCK		LRCK  
 P_I2S_BCLK		BCLK  
 P_I2S_DATA		DATA  
-
-ADC keyboard:  
-P_ADC			gpio32 to 39  or 255 if not used.  
-
-LCD Backlight:
+- **ADC keyboard:**  
+P_ADC_KBD			gpio32 to 39  or 255 if not used. 
+- **LCD Backlight:**   
 P_BACKLIGHT		GPIO of the hardware device.
-```
+- **TOUCH SCREEN:**  
+P_TOUCH_CS		GPIO of the t_cs pin of the touch or 255 if no screen  
+  Other pins are t_clk, t_din, t_do respectively the spi clk, mosi, miso. T_irq is not used.  
+- **LED GPIO**  
+P_LED_GPIO		GPIO of the status led  
 
+## OPTIONS
+- **LCD CONTROL**  
+P_LCD_TYPE		Type of lcd (see [addon.h](https://github.com/karawin/Ka-Radio32/blob/master/main/include/addon.h) file).  
+P_LCD_ROTA		Control the rotation of the LCD, 0 no rotation, 1: rotation.  
+O_LCD_OUT 		The tempo to light off the screen in seconds. 0 is no tempo.   
+O_DDMM_FLAG		The format of the date to display 0:MMDD, 1:DDMM.  
 -------------------
 ## Special cases:
 -------------------
+### GPIO
+- GPIOs 34 to 39 are input only pins.  
+These pins don’t have internal pull-ups or pull-down resistors.  
+They can’t be used as outputs, so use these pins only as inputs or ADC usage.  
+- Digital to Analog Converter (DAC)  
+There are 2 x 8 bits DAC channels on the ESP32 to convert digital signals into analog voltage signal outputs.  
+These are the DAC channels:  
+-    DAC1 (GPIO25)  
+-    DAC2 (GPIO26)
 ### SPI bus
 
 K_SPI,data,u8,2  
-   2 is the spi VSPI_HOST (default)  
-   1 is the spi HSPI_HOST  
-   The spi bus is initialized in any case. It used for the vs1053 and/or the LCD if needed.
+- 1 is the spi HSPI_HOST  
+- 2 is the spi VSPI_HOST (default)  
+   The spi bus is initialized in any case. It used for the vs1053 and/or the LCD if needed.  
+   Prefered gpio for the spi bus (IOMUX):  
+   HSPI: SCLK=14, MISO=12, MOSI=13  
+   VSPI: SCLK=18, MISO=19, MOSI=23  
    
 
 ### Encoders
 
 Two encoders maximun are supported, each with different actions:  
 Encoder0: the volume control and stations change when pushed and held,  
-Encoder1: the station control and volume change when pushed and heldi.  
+Encoder1: the station control and volume change when pushed and held.  
 
 If P_ENC0_A = 255 the encoder (P_ENC0_A, P_ENC0_B, P_ENC0_BTN) is disabled (not used, the gpio's may be reused elsewhere).    
 If P_ENC1_A = 255 the encoder (P_ENC1_A, P_ENC1_B, P_ENC1_BTN) is disabled (not used, the gpio's may be reused elsewhere).  
@@ -149,18 +189,30 @@ held on button A: click on button B and C: volume down and up for set 1 (P_BTN1)
 
 If a set is not used, P_BTNx_A must be set to 255. In this case P_BTNx_B P_BTNx_C are disabled too.
 
+### Joystick
+A joystick is a set of two buttons but both cannot be pushed at the same time.  
+The GPIO must be an ADC one, i.e gpio32 to 39  or 255 if not used.   
+Joystick 0  controls the volume,  
+Joystick 1 controls the station choice.  
+Botton 0 is 3.3 V  
+Button 1 is 3.3/2 V  
+An example of joystick:  
+![Screenshoot of joystick](http://karadio.karawin.fr/images/joystick.jpg)
+
 ### I2C
-If I2C is not used (ie no lcd or spi lcd) the gpio of the i2C can be reused elsewhere.
+If I2C is not used (ie no lcd or spi lcd) the gpio of the i2C can be reused elsewhere.  
+To disable I2C even a I2C LCD is used: P_I2S_LRCK	and/or P_I2S_BCLK	must be set to 255  
 
 ### VS1053b
-If not used P_XCS must be set to 255. Gpio of P_RST P_XDCS P_DREQ may be reused elsewhere.
+If not used P_XCS must be set to 255. Gpio of P_RST P_XDCS P_DREQ may be reused elsewhere.  
 
 ### IR
 If IR remote control is not used P_IR_SIGNAL must be set to 255
 
 ### ADC keyboard
 If the ADC keyboard is missing, set P_ADC  to 255.  
-Compatible with https://github.com/…/Ka-…/blob/master/Hardware/controles.pdf and the one found at https://www.drive2.ru/b/487463808323813881/  
+GPIO pin must be gpio32 to 39  or 255 if not used.   
+Compatible with https://github.com/karawin/Ka-Radio/blob/master/Hardware/controles.pdf and the one found at https://www.drive2.ru/b/487463808323813881/  
 The stop button is replaced with "Toggle Time/Infos" and "start replaced with "Start/Stop"  
 The ESP32 ADC can be sensitive to noise leading to large discrepancies in ADC readings. To minimize noise, users may connect a 0.1uF capacitor to the ADC input pad in use
 
@@ -172,7 +224,24 @@ This external device turns off the LCD backlight in addition to the screen clear
 Usefull if a battery is used.  
 If the hardware device is missing, set it to 255
 
-![Screenshoot of download tool](http://karadio.karawin.fr/images/backlight.jpg)
+![Screenshoot of backlight](http://karadio.karawin.fr/images/backlight.jpg)  
+
+### TOUCH SCREEN
+P_TOUCH_CS  of the t_cs pin of the touch or 255 if no screen.  
+Other pins are t_clk, t_din, t_do respectively the spi clk, mosi, miso. T_irq is not used.  
+The screen must be calibrated with the command sys.cali[brate]  
+The screen is divided in 5 zones:  
+- Center: Start/Stop
+- Top: Volume+
+- Bottom: Volume-
+- Left: Station-
+- Bottom: Station+
+
+### OPTIONS
+If any options value is 255, the values defined by sys. command are unchanged.  
+If a sys. command changes the value in csv, the internal flashed bin of the csv is updated.  
+As long  the original bin is not flashed again, the internal value apply. 
+
 ---------------------
 3/ IR key definitions
 ---------------------
@@ -224,19 +293,20 @@ Save the csv file.
 ------------------------
 Some samples are in the boards directory.   
 
-Start the command  
-`./nvs_partition_generator.sh yourname[.csv]`  
-to generate build/yourname.bin
+Build the bin file
+------------------
+1. Place the Ka-Radio32-master files in "your-user-name"/esp folder
+2. Place your modified csv file in the Ka-Radio32-master/boards folder
 
-For example  
-`  ./nvs_partition_generator.sh standard_adb`  
+3. Return to the msys32 window and navigate to the Ka-Radio32-master/boards folder
 
-generates the build/standard_adb.bin file from the standard_adb.csv file
-```
-$ ./nvs_partition_generator.sh standard_adb
-python ../esp-idf/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py standard_adb.csv build/standard_adb.bin 8KB
-done
-```
+4. Start the command : ./nvs_partition_generator.sh yourname[.csv] to generate build/yourname.bin
+
+Result :   
+MINGW32 ~/esp/Ka-Radio32-master/boards  
+$ ./nvs_partition_generator.sh modified_adb  
+python ./nvs_partition_gen.py modified_adb.csv build/modified_adb.bin 0x2000  
+done  
 
 
 ------------

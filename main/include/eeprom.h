@@ -9,13 +9,16 @@
 #include "esp_system.h"
 #include "audio_renderer.h"
 
-//define for bit array 
+//define for bit array options
 #define T_THEME 	1
 #define NT_THEME	0xFE
 #define T_PATCH 	2
 #define NT_PATCH	0xFD
 #define T_LED		4
 #define NT_LED		0xFB
+#define T_LEDPOL	8
+#define NT_LEDPOL	0xF7
+//define for bit array options32
 #define T_DDMM		1
 #define NT_DDMM		0xFE
 #define T_ROTAT		2
@@ -24,6 +27,8 @@
 #define T_ENC1		8
 #define NT_ENC0	0xFB
 #define NT_ENC1	0xF7
+#define T_WIFIAUTO	0x10
+#define NT_WIFIAUTO 0xEF
 
 #define APMODE		0
 #define STA1		1
@@ -44,8 +49,8 @@ struct device_settings {
 	uint8_t gate2[4];			
 	char ssid1[SSIDLEN]; 
 	char ssid2[SSIDLEN]; 
-	char pass1[PASSLEN];
-	char pass2[PASSLEN];
+	char pass1[PASSLEN];	
+	char pass2[PASSLEN];	
 	uint8_t current_ap; // 0 = AP mode, else STA mode: 1 = ssid1, 2 = ssid2
 	uint8_t vol;
 	int8_t treble;
@@ -57,7 +62,7 @@ struct device_settings {
 	uint8_t autostart; // 0: stopped, 1: playing
 	uint8_t i2sspeed; // 0 = 48kHz, 1 = 96kHz, 2 = 128kHz
 	uint32_t uartspeed; // serial baud
-	uint8_t options;  // bit0:0 theme ligth blue, 1 Dark brown, bit1: 0 patch load  1 no patch, bit2: O blink led  1 led on On play
+	uint8_t options;  // bit0:0 theme ligth blue, 1 Dark brown, bit1: 0 patch load  1 no patch, bit2: O blink led  1 led on On play, bit3:led polarity 0 normal 1 reverse 
 	char ua[39]; // user agent
 	int8_t tzoffset; //timezone offset
 	uint32_t sleepValue; 	
@@ -69,11 +74,12 @@ struct device_settings {
 	uint8_t led_gpio; // the gpio of the led
 	uint32_t lcd_out;	// timeout in seconds to switch off the lcd. 0 = no timeout
 	uint8_t options32;	// bit0:0 = MMDD, 1 = DDMM  in the time display, bit1: 0= lcd without rotation  1 = lcd rotated 180
-						// bit 2: Half step of encoder0, bit3: Half step of encoder1
+						// bit 2: Half step of encoder0, bit3: Half step of encoder1, bit4: wifi auto reconnect
 	char hostname[HOSTLEN];
-	char filler[8]; 
+	uint32_t tp_calx;
+	uint32_t tp_caly;
 
-};
+} Device_Settings;
 
 struct shoutcast_info {
 	char domain[73]; //url
@@ -82,6 +88,8 @@ struct shoutcast_info {
 	int8_t ovol; // offset volume
 	uint16_t port;	//port
 };
+
+extern struct device_settings* g_device;
 
 void partitions_init(void);
 void copyDeviceSettings();

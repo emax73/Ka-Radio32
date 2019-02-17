@@ -21,10 +21,10 @@
 // ----------------------------------------------------------------------------
 
 #define TAG "ClickButton"
-  
+bool getPinStates(Button_t *enc,uint8_t index);  
 // ----------------------------------------------------------------------------
 
-bool getpinsActives(Button_t *enc) {return enc->pinsActive;}
+//bool getpinsActives(Button_t *enc) {return enc->pinsActive;}
 
 Button_t* ClickButtonsInit(int8_t A, int8_t B, int8_t C)
 {
@@ -41,7 +41,6 @@ Button_t* ClickButtonsInit(int8_t A, int8_t B, int8_t C)
 		enc->doubleClickTicks[i] = 0;
 		enc->lastButtonCheck[i] = 0;
 	}
-	enc->button[0] = Open;enc->button[1] = Open;enc->button[2] = Open;
 	enc->doubleClickEnabled = true; enc->buttonHeldEnabled = true;
 
 	gpio_config_t gpio_conf;
@@ -52,7 +51,6 @@ Button_t* ClickButtonsInit(int8_t A, int8_t B, int8_t C)
 
   if (enc->pinBTN[0] > 0) 
   {
-	gpio_conf.pin_bit_mask = BIT(enc->pinBTN[0]);
 	gpio_conf.pin_bit_mask = ((uint64_t)(((uint64_t)1)<<enc->pinBTN[0]));
 	ESP_ERROR_CHECK(gpio_config(&gpio_conf));
   }
